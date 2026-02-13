@@ -52,7 +52,7 @@ A highly realistic sticky note dashboard for Obsidian. Capture ideas as naturall
 
 4. **Right-click** a note to access the context menu for styling, copying, or deleting.
 
-![Pasted image 20260213091953](./docs/Pasted image 20260213091953.png)
+![Pasted image 20260213091953](docs/image1.png)
 
 ---
 

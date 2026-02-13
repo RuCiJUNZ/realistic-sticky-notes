@@ -1,7 +1,7 @@
 
 # Obsidian Realistic Sticky Notes
 
-![Sticky Notes Showcase](docs/sticky-notes-showcase.png)
+![Sticky Notes Showcase](sticky-notes-showcase.png)
 
 <p align="center">
 <img src="https://img.shields.io/badge/License-AGPL--3.0-orange" alt="License">
@@ -43,7 +43,7 @@
 
 4. **右键**点击：调整外观、复制或删除。
 
-![Pasted image 20260213091953](./Pasted image 20260213091953.png)
+![Pasted image 20260213091953](image1.png)
 
 ---
 
