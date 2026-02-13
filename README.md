@@ -13,11 +13,13 @@ A highly realistic sticky note dashboard for Obsidian. Capture ideas as naturall
 
 ---
 
-<p align="center">
-  <video src="docs/video1.mp4"
-    controls muted>
-  </video>
-</p>
+<div align="center">
+  <a href="docs/video1.mp4">
+    <img src="docs/thumbnail.png" width="600" alt="Watch Demo Video" style="border-radius: 10px;">
+    <br>
+    <p>🎬 <b>Click to watch the Demo Video (91MB)</b></p>
+  </a>
+</div>
 
 ---
 
