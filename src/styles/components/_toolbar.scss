@@ -1,0 +1,171 @@
+// /包含 Wrapper, Toolbar, Select, Inputs, Buttons。
+// Wrapper
+.bc-controls-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+// Toolbar Body
+.bc-toolbar {
+    width: 100%;
+    height: 48px;
+    background-color: var(--background-primary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 12px;
+    pointer-events: auto;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+// Left & Right Groups
+.bc-toolbar-left {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.bc-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+// Select Inputs
+.bc-select-wrapper {
+    position: relative;
+    max-width: 200px;
+    min-width: 120px;
+}
+
+.bc-select {
+    width: 100%;
+    height: 32px;
+    padding: 0 28px 0 8px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--text-normal);
+    font-size: 14px;
+    font-weight: 500;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background-color: var(--background-modifier-hover);
+    }
+
+    &:focus {
+        background-color: var(--background-primary);
+        border-color: var(--interactive-accent);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+    }
+}
+
+.bc-select-arrow {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.bc-input-new {
+    flex: 1;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    padding: 0 8px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    min-width: 100px;
+
+    &:focus {
+        outline: none;
+        border-color: var(--interactive-accent);
+        box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+    }
+}
+
+.bc-divider {
+    width: 1px;
+    height: 20px;
+    background-color: var(--background-modifier-border);
+    opacity: 0.6;
+}
+
+// Icon Buttons
+.bc-icon-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-muted);
+    background-color: transparent;
+    transition: all 0.2s ease;
+    position: relative;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        stroke-width: 2px;
+    }
+
+    &:hover {
+        background-color: var(--background-modifier-hover);
+        color: var(--text-normal);
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        transform: translateY(0);
+        background-color: var(--background-modifier-active);
+    }
+
+    &.is-active {
+        background-color: rgba(var(--interactive-accent-rgb), 0.1);
+        color: var(--interactive-accent);
+
+        &:hover {
+            background-color: rgba(var(--interactive-accent-rgb), 0.2);
+        }
+    }
+
+    &.is-highlight {
+        color: var(--interactive-success);
+
+        &:hover {
+            background-color: rgba(var(--interactive-success-rgb), 0.1);
+        }
+    }
+
+    &.is-danger {
+        color: var(--text-muted);
+
+        &:hover {
+            background-color: var(--background-modifier-error);
+            color: var(--text-on-accent);
+            box-shadow: 0 2px 6px rgba(255, 59, 48, 0.25);
+        }
+    }
+}

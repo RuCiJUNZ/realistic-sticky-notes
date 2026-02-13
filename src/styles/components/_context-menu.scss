@@ -1,0 +1,266 @@
+/* ============================================================
+   核心容器与通用组件
+   ============================================================ */
+.bc-ctx-menu.mini-visual {
+    user-select: none;
+    font-family: var(--font-interface);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.bc-visual-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.bc-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-faint);
+    margin-bottom: -6px;
+}
+
+/* ============================================================
+   工具栏 (Buttons & Controls)
+   ============================================================ */
+.bc-row-tools {
+    display: flex;
+    gap: 10px;
+}
+
+.tool-btn {
+    flex: 1;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--background-secondary);
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--text-normal);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    &:hover {
+        background: var(--background-modifier-hover);
+        transform: translateY(-1px);
+    }
+
+    &.danger:hover {
+        background: #ff444420;
+        color: #ff4444;
+    }
+}
+
+/* 纹理按钮 */
+.bc-pattern-row {
+    display: flex;
+    gap: 8px;
+}
+
+.pat-btn {
+    flex: 1;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--background-secondary);
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    &.active {
+        background: var(--interactive-accent);
+        color: white;
+    }
+}
+
+/* 分段控制器 */
+.bc-segmented {
+    display: flex;
+    background: var(--background-secondary);
+    padding: 3px;
+    border-radius: 8px;
+
+    div {
+        flex: 1;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 5px 0;
+        cursor: pointer;
+        border-radius: 6px;
+        color: var(--text-muted);
+        transition: all 0.2s ease;
+
+        &.active {
+            background: var(--background-primary);
+            color: var(--text-normal);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+    }
+}
+
+.bc-row-controls {
+    width: 100%;
+}
+
+/* ============================================================
+   Mini Gallery (图片预览库)
+   ============================================================ */
+.bc-mini-gallery {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 10px;
+    background: var(--background-secondary-alt);
+    border-radius: 12px;
+    margin: 4px 0;
+
+    /* 隐藏滚动条 */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+
+    /* IE/Edge */
+    &::-webkit-scrollbar {
+        display: none;
+        /* Chrome/Safari */
+    }
+
+    .gallery-item {
+        aspect-ratio: 1;
+        border-radius: 6px;
+        overflow: hidden;
+        cursor: pointer;
+        border: 2.5px solid transparent;
+        background: var(--background-primary);
+        transition: all 0.15s ease;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        &.active {
+            border-color: var(--interactive-accent);
+            transform: scale(0.95);
+        }
+
+        &.upload-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-faint);
+            border: 2px dashed var(--background-modifier-border);
+
+            &:hover {
+                color: var(--interactive-accent);
+                border-color: var(--interactive-accent);
+                background: var(--background-primary-alt);
+            }
+        }
+    }
+}
+
+/* ============================================================
+   Color Strip (颜色选择条)
+   ============================================================ */
+.bc-color-strip {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+
+    .color-dot {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.2s ease;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+
+        &:hover {
+            transform: scale(1.15);
+        }
+
+        &.active {
+            border-color: var(--interactive-accent);
+            transform: scale(1.15);
+            box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+        }
+
+        /* 透明色选项：棋盘格背景 */
+        &.is-trans {
+            background-image: conic-gradient(var(--background-modifier-border) 25%, transparent 0 50%, var(--background-modifier-border) 0 75%, transparent 0) !important;
+            background-size: 8px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid var(--background-modifier-border);
+
+            &.active {
+                border-color: var(--interactive-accent);
+            }
+        }
+    }
+}
+
+/* ============================================================
+   Empty State Menu (初始菜单)
+   ============================================================ */
+.bc-entry-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.bc-entry-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    height: auto;
+    background-color: var(--background-secondary);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    box-shadow: none !important;
+    transition: all 0.2s ease;
+
+    .icon-box {
+        margin-bottom: 12px;
+        transform: scale(1.5);
+        color: var(--text-muted);
+    }
+
+    &:hover {
+        border-color: var(--interactive-accent);
+        background-color: var(--background-primary);
+        cursor: pointer;
+
+        .icon-box {
+            color: var(--interactive-accent);
+        }
+    }
+}

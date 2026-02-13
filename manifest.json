@@ -1,0 +1,11 @@
+{
+  "id": "sticky-notes",
+  "name": "Realistic Sticky Notes",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Realistic physical-style sticky notes for your notes.",
+  "author": "SumuS",
+  "authorUrl": "https://github.com/RuCiJUNZ/",
+  "fundingUrl": "https://ko-fi.com/sumus",
+  "isDesktopOnly": false
+}

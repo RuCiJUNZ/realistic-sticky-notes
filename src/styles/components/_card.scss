@@ -1,0 +1,107 @@
+//RGL 内部卡片的样式。
+.brain-core-card {
+    -webkit-font-smoothing: antialiased;
+    contain: paint layout;
+    transform: translateZ(0);
+    image-rendering: -webkit-optimize-contrast;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 10px;
+    box-shadow: none;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+
+    img {
+        transform: translateZ(0);
+    }
+
+    .theme-light &:hover {
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.06);
+        transform: translateY(-2px);
+    }
+
+    .theme-dark &:hover {
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.25);
+        transform: translateY(-2px);
+    }
+}
+
+// 拖拽中的卡片 overrides
+.react-grid-item.react-draggable-dragging .brain-core-card {
+    transform: none !important;
+    box-shadow: var(--shadow-l) !important;
+    cursor: grabbing;
+}
+
+// 内容区域
+.widget-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: 12px;
+    padding-top: 36px;
+    position: relative;
+
+    h4 {
+        position: absolute;
+        top: 0;
+        left: 12px;
+        right: 12px;
+        height: 36px;
+        line-height: 36px;
+        margin: 0;
+        font-size: 1em;
+        font-weight: 600;
+        color: var(--text-muted);
+        pointer-events: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    &.auto-height {
+        height: auto !important;
+        min-height: 100%;
+        overflow: visible;
+    }
+
+    &.is-folded {
+        overflow: hidden;
+        mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+    }
+}
+
+// 拖拽条区域
+.drag-handle-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 36px;
+    z-index: 20;
+    cursor: grab;
+    background: transparent;
+
+    &:active {
+        cursor: grabbing;
+    }
+
+    .is-locked & {
+        display: none !important;
+    }
+}
+
+// React 挂载点
+.brain-core-mount-point {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}

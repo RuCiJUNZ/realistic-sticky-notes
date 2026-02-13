@@ -1,0 +1,131 @@
+//空状态、欢迎页、模块选择列表。
+// 空状态入口列表
+.bc-entry-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 800px;
+
+    @media (max-width: 600px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.bc-entry-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    height: auto;
+    background-color: var(--background-secondary);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    box-shadow: none !important;
+    transition: all 0.2s ease;
+
+    .icon-box {
+        margin-bottom: 12px;
+        transform: scale(1.5);
+        color: var(--text-muted);
+    }
+
+    &:hover {
+        border-color: var(--interactive-accent);
+        background-color: var(--background-primary);
+        cursor: pointer;
+
+        .icon-box {
+            color: var(--interactive-accent);
+        }
+    }
+}
+
+// 模块列表
+.bc-module-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 900px;
+
+    @media (max-width: 600px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.bc-module-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 8px;
+    height: 100%;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    box-shadow: none !important;
+
+    .icon-box {
+        margin-bottom: 8px;
+        color: var(--text-muted);
+    }
+
+    span {
+        font-size: 0.85em;
+        text-align: center;
+        line-height: 1.2;
+    }
+
+    &:hover {
+        border-color: var(--interactive-accent);
+        background-color: var(--background-primary);
+        cursor: pointer;
+
+        .icon-box {
+            color: var(--interactive-accent);
+        }
+    }
+}
+
+// 右键垂直菜单大按钮
+.tool-btn-big {
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 0 16px;
+    background: var(--background-secondary);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-normal);
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+
+    svg {
+        width: 18px !important;
+        height: 18px !important;
+        flex-shrink: 0;
+        stroke-width: 2.5px;
+    }
+
+    &:hover {
+        background: var(--interactive-accent);
+        color: white;
+    }
+
+    &:active {
+        transform: scale(0.98);
+    }
+}
+
+.bc-row-tools-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}

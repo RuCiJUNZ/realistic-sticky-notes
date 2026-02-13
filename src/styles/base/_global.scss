@@ -1,0 +1,51 @@
+// 1. 处理滚动条隐藏和全宽模式。
+.brain-core-dashboard,
+.widget-content,
+.task-card-body,
+.kpi-details-area,
+.bc-kpi-details,
+.bc-mini-gallery {
+
+    // 包含了 gallery 的隐藏逻辑
+    &::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+    }
+
+    scrollbar-width: none; // Firefox
+    -ms-overflow-style: none; // IE
+}
+
+// 2. 原生级全宽模式
+.brain-core-full-width {
+    --file-line-width: 100% !important;
+    --line-width: 100% !important;
+    --max-width: 100% !important;
+    --container-img-width: 100% !important;
+    --table-wrapper-width: 100% !important;
+
+    .markdown-source-view.mod-cm6 .cm-contentContainer,
+    .markdown-source-view.mod-cm6 .cm-sizer,
+    .markdown-preview-view .markdown-preview-sizer,
+    .cm-scroller {
+        max-width: none !important;
+        width: 100% !important;
+    }
+
+    // 防止贴边
+    .markdown-source-view.mod-cm6 .cm-scroller,
+    .markdown-preview-view {
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+    }
+}
+
+// 3. 通用 Helper
+.bc-full-height {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}

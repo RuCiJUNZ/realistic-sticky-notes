@@ -1,0 +1,15 @@
+//这里我们提取核心设计 token，方便后续一键换肤。
+.brain-core-plugin {
+    // 核心设计 Token
+    --bc-radius: 8px;
+    --bc-gap: 8px;
+    --bc-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --bc-transition: all 0.2s ease;
+
+    // 阴影系统
+    --shadow-s: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-l: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+    // 字体
+    --font-interface: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
