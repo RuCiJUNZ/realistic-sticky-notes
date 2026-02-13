@@ -15,7 +15,11 @@
 ---
 
 <p align="center">
-  <video src="video1.mp4" width="100%" autoplay loop muted playsinline></video>
+  <a href="https://www.youtube.com/watch?v=qLsNvQLTyyg">
+    <img src="https://img.youtube.com/vi/qLsNvQLTyyg/maxresdefault.jpg" alt="Mind Memos Demo Video" width="800" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+    <br>
+    <b> Click to Watch the Demo Video on YouTube</b>
+  </a>
 </p>
 
 ---
