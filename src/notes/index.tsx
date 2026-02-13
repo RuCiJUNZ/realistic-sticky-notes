@@ -28,7 +28,7 @@ export class WhiteboardWidget extends BaseWidget {
     private getPluginInstance(): BrainCorePlugin {
         if (BrainCorePlugin.instance) return BrainCorePlugin.instance;
         // 注意：这里的 ID 'sticky-notes' 必须和 manifest.json 里的 id 一致
-        const instance = (this.app as any).plugins.getPlugin('sticky-notes');
+        const instance = (this.app as any).plugins.getPlugin('realistic-sticky-notes');
         if (!instance) {
             console.error("[BrainCore] Critical Error: Plugin instance not found!");
             throw new Error("Plugin instance not found");
@@ -58,7 +58,7 @@ export class WhiteboardWidget extends BaseWidget {
         if (boards.length === 0) {
             await this.manager.createBoard('default');
             boards = ['default'];
-            if (!this.currentBoardName || this.currentBoardName === 'sticky-notes') {
+            if (!this.currentBoardName || this.currentBoardName === 'realistic-sticky-notes') {
                 this.currentBoardName = 'default';
             }
         }
