@@ -14,6 +14,12 @@
 
 ---
 
+<p align="center">
+  <video src="video1.mp4" width="100%" autoplay loop muted playsinline></video>
+</p>
+
+---
+
 ## 功能亮点
 
 ### 拟真便利贴

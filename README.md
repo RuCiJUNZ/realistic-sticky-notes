@@ -13,6 +13,12 @@ A highly realistic sticky note dashboard for Obsidian. Capture ideas as naturall
 
 ---
 
+<p align="center">
+  <video src="docs/video1.mp4" width="100%" autoplay loop muted playsinline></video>
+</p>
+
+---
+
 ## Feature Highlights
 
 ### Realistic Sticky Notes
