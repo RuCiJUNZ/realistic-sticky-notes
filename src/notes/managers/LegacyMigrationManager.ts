@@ -24,12 +24,9 @@ export class LegacyMigrationManager {
         const legacyPath = normalizePath(`${basePath}/${this.LEGACY_FOLDER}`);
         let targetFolder = this.app.vault.getAbstractFileByPath(basePath);
 
-        // 如果存在 Whiteboards 文件夹，优先扫描它
         if (await this.app.vault.adapter.exists(legacyPath)) {
             targetFolder = this.app.vault.getAbstractFileByPath(legacyPath);
-            console.log("[StickyNotes] Found legacy folder, scanning for migrations...");
         }
-
         if (!(targetFolder instanceof TFolder)) return;
 
         // 2. 扫描 JSON 文件 (强制断言为 TFile[])
@@ -39,8 +36,6 @@ export class LegacyMigrationManager {
             // 跳过 data.json 和已迁移的文件
             if (file.name === 'data.json') continue;
             if (this.plugin.settings.migratedFiles.includes(file.name)) continue;
-
-            console.log(`[StickyNotes] Migrating ${file.name}...`);
             try {
                 const content = await this.app.vault.read(file);
                 const parsed = JSON.parse(content);

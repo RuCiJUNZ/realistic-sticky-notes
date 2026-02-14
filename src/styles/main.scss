@@ -7,6 +7,8 @@
 @use 'components/handle';
 @use 'components/card';
 @use 'components/context-menu';
+@use 'components/whiteboard';
+@use 'components/modal';
 
 // 3. Pages / Layout
 @use 'pages/dashboard';

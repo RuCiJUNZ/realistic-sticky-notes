@@ -1,6 +1,6 @@
 // src/views/react-host.tsx
 
-import { MarkdownPostProcessorContext, MarkdownRenderChild, App } from "obsidian";
+import { MarkdownPostProcessorContext, MarkdownRenderChild } from "obsidian";
 import { Root, createRoot } from "react-dom/client";
 import React from "react";
 import BrainCorePlugin from "../../main";

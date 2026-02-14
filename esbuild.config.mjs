@@ -2,6 +2,8 @@ import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
 import { sassPlugin } from "esbuild-sass-plugin";
+import { exec } from "child_process"; // 🟢 新增：引入执行命令的模块
+
 const banner =
     `/**
  * Realistic Sticky Notes
@@ -12,14 +14,34 @@ const banner =
 
 const prod = (process.argv[2] === "production");
 
+// 🟢 新增：定义一个 ESLint 自动修复插件
+const eslintPlugin = {
+    name: "eslint-autofix",
+    setup(build) {
+        build.onEnd((result) => {
+            // 如果 esbuild 编译本身就失败了，就不跑 eslint 了，免得刷屏
+            if (result.errors.length > 0) return;
+
+            console.log("🧹 Running ESLint autofix...");
+            // 执行修复命令 (针对当前目录下的所有文件)
+            exec("npx eslint . --fix", (err, stdout, stderr) => {
+                if (stdout) console.log(stdout); // 输出 ESLint 的提示
+                if (stderr) console.error(stderr); // 输出错误
+                if (!err) {
+                    console.log("✨ ESLint autofix complete!");
+                }
+            });
+        });
+    },
+};
+
 const context = await esbuild.context({
     banner: {
         js: banner,
     },
-    // 🟢 两个入口：左边是输出文件名，右边是源文件
     entryPoints: {
         main: "main.tsx",
-        styles: "src/styles/main.scss", // 👈 修改这里，指向正确的路径
+        styles: "src/styles/main.scss",
     },
     bundle: true,
     external: [
@@ -33,20 +55,20 @@ const context = await esbuild.context({
         "@codemirror/search",
         "@codemirror/state",
         "@codemirror/view",
-        ...builtins],
+        ...builtins
+    ],
     format: "cjs",
     target: "es2018",
     logLevel: "info",
-    sourcemap: false, // 关闭 Source Map 避免 4万行代码
+    sourcemap: false,
     treeShaking: true,
-    minify: prod, // 生产环境压缩
+    minify: prod,
 
-    // 🟢 插件配置
     plugins: [
         sassPlugin(),
+        eslintPlugin, // 🟢 关键：把我们刚才写的插件加到这里
     ],
 
-    // 🟢 关键修改：使用 outdir 而不是 outfile
     outdir: ".",
 });
 

@@ -43,7 +43,9 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
 
         // 2. 渲染新 Markdown
         // MarkdownRenderer.render(app, markdown, containerEl, sourcePath, component)
-        MarkdownRenderer.render(
+
+        // 🟢 Fix: 使用 void 操作符显式忽略 Promise
+        void MarkdownRenderer.render(
             app,
             content,
             container,

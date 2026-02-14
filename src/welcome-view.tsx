@@ -36,21 +36,28 @@ const Icons = {
 // ============================================================
 const WelcomePage: React.FC<{ app: App, onClose: () => void }> = ({ app, onClose }) => {
 
-    const handleCreate = async () => {
-        // English filename and content for GitHub release
-        const fileName = `Sticky Board ${Date.now()}.md`;
-        const content = `# My Sticky Notes\n\nDouble-click anywhere to add a note.\n\n\`\`\`sticky-note\nNew Board\n\`\`\``;
+    // 修改 1: 移除外层的 async，改用内部异步闭包
+    // 这样 handleCreate 本身返回 void，满足 onClick 的类型要求
+    const handleCreate = () => {
+        (async () => {
+            const fileName = `Sticky board ${Date.now()}.md`;
+            const content = `# My sticky notes\n\nDouble-click anywhere to add a note.\n\n\`\`\`sticky-note\nNew Board\n\`\`\``;
 
-        try {
-            const file = await app.vault.create(fileName, content);
-            await app.workspace.getLeaf(true).openFile(file);
-            // Optional: Close welcome view after creating
-            // onClose();
-        } catch (e) {
-            console.error("Failed to create file", e);
-        }
+            try {
+                const file = await app.vault.create(fileName, content);
+
+                // 打开新文件
+                await app.workspace.getLeaf(true).openFile(file);
+
+                // ✅ 修改 2: 成功后调用 onClose 关闭欢迎页
+                onClose();
+            } catch (e) {
+                console.error("Failed to create file", e);
+                // 建议: 添加一个 Notice 提示用户失败
+                // new Notice("创建失败");
+            }
+        })();
     };
-
     return (
         <div className="bc-container">
             <div className="bc-content">
@@ -61,16 +68,18 @@ const WelcomePage: React.FC<{ app: App, onClose: () => void }> = ({ app, onClose
                 </div>
 
                 {/* 2. Title Section */}
-                <h1 className="bc-title">Sticky Notes</h1>
+                {/* 🟢 Fix: Sentence case ("Sticky notes") */}
+                <h1 className="bc-title">Sticky notes</h1>
                 <p className="bc-subtitle">
                     Infinite canvas for your thoughts in Obsidian.
                 </p>
 
                 {/* 3. Action Section */}
                 <div className="bc-actions">
+                    {/* ✅ 修改 3: 现在可以直接传递 handleCreate 了，因为它不再返回 Promise */}
                     <button className="bc-btn-primary" onClick={handleCreate}>
                         <Icons.Plus />
-                        <span>Create New Board</span>
+                        <span>Create new board</span>
                     </button>
 
                     <div className="bc-footer-text">
@@ -209,17 +218,30 @@ export class WelcomeView extends ItemView {
     }
 
     getViewType() { return WELCOME_VIEW_TYPE; }
-    getDisplayText() { return "Sticky Notes"; } // Simplified title
+    getDisplayText() { return "Sticky notes"; }
     getIcon() { return "sticky-note"; }
 
-    async onOpen() {
-        const container = this.containerEl.children[1];
+    // ✅ Fix: Removed 'async' because there are no 'await' calls
+    onOpen(): Promise<void> {
+        const container = this.contentEl;
         container.empty();
+
         this.root = createRoot(container);
-        this.root.render(<WelcomePage app={this.app} onClose={() => { }} />);
+
+        this.root.render(
+            <WelcomePage
+                app={this.app}
+                // When the component calls onClose, detach the leaf (close the tab)
+                onClose={() => { this.leaf.detach(); }}
+            />
+        );
+
+        return Promise.resolve();
     }
 
-    async onClose() {
+    // ✅ Fix: Removed 'async'
+    onClose(): Promise<void> {
         this.root?.unmount();
+        return Promise.resolve();
     }
 }

@@ -1,10 +1,15 @@
-// src/notes/hooks/useWhiteboardLogic.ts
-
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { debounce, App } from 'obsidian';
 import { StickyNoteData, WhiteboardData, WallStyle, MenuState } from '../types';
 
-// ... (getContentBounds 辅助函数保持不变) ...
+// --- 辅助 Hook: 始终保持最新的 Ref，避免闭包陷阱 ---
+function useLatest<T>(value: T) {
+    const ref = useRef(value);
+    ref.current = value;
+    return ref;
+}
+
+// --- 辅助函数：计算内容边界 ---
 const getContentBounds = (notes: StickyNoteData[]) => {
     if (notes.length === 0) return null;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -25,6 +30,7 @@ const getContentBounds = (notes: StickyNoteData[]) => {
     };
 };
 
+// --- 接口定义 ---
 interface UseWhiteboardLogicResult {
     notes: StickyNoteData[];
     wallStyle: WallStyle;
@@ -45,8 +51,14 @@ interface UseWhiteboardLogicResult {
     toggleStraighten: () => void;
     cycleWallStyle: () => void;
     centerContent: () => void;
-    offsetRef: React.MutableRefObject<{ x: number; y: number }>;
-    scaleRef: React.MutableRefObject<number>;
+
+    // ✅ 修复：符合审核标准的 RefObject (只读接口)
+    offsetRef: React.RefObject<{ x: number; y: number }>;
+    scaleRef: React.RefObject<number>;
+
+    // ✅ 新增：通过方法来修改 Ref，而不是直接暴露 MutableRef
+    updateViewport: (dx: number, dy: number, newScale?: number) => void;
+
     applyOffsetToDOM: (x: number, y: number, scale: number) => void;
     screenToCanvas: (clientX: number, clientY: number) => { x: number; y: number };
 }
@@ -58,8 +70,8 @@ export const useWhiteboardLogic = (
     onSave: (data: WhiteboardData) => void,
     containerRef: React.RefObject<HTMLDivElement | null>,
     notesContainerRef: React.RefObject<HTMLDivElement | null>,
-    currentFile: string
 ): UseWhiteboardLogicResult => {
+
     // --- 1. 状态管理 ---
     const [notes, setNotes] = useState<StickyNoteData[]>(initialNotes || []);
     const [wallStyle, setWallStyle] = useState<WallStyle>(initialWallStyle || 'dots');
@@ -68,46 +80,82 @@ export const useWhiteboardLogic = (
     const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
 
     // --- 2. Refs ---
-    const notesRef = useRef(notes);
-    const selectedIdRef = useRef(selectedNoteId);
-    const clipboardRef = useRef<StickyNoteData | null>(null);
-    const offsetRef = useRef({ x: 0, y: 0 });
-    const scaleRef = useRef(1);
-    const isReadyRef = useRef(false);
+    const notesRef = useLatest(notes);
+    const wallStyleRef = useLatest(wallStyle);
+    const selectedIdRef = useLatest(selectedNoteId);
 
-    useEffect(() => { notesRef.current = notes; }, [notes]);
-    useEffect(() => { selectedIdRef.current = selectedNoteId; }, [selectedNoteId]);
-    useEffect(() => {
-        isReadyRef.current = true;
-        return () => { isReadyRef.current = false; };
+    // 内部状态 Refs
+    const clipboardRef = useRef<StickyNoteData | null>(null);
+    const offsetRef = useRef({ x: 0, y: 0 }); // 内部初始化，保证不为 null
+    const scaleRef = useRef(1);
+    const rafRef = useRef<number | null>(null);
+
+    // --- 3. 视口更新逻辑 (封装变异) ---
+    const updateViewport = useCallback((dx: number, dy: number, newScale?: number) => {
+        if (offsetRef.current) {
+            offsetRef.current.x += dx;
+            offsetRef.current.y += dy;
+        }
+        if (newScale !== undefined && scaleRef.current !== null) {
+            scaleRef.current = newScale;
+        }
     }, []);
 
-    // --- 3. 自动保存逻辑 ---
+    // --- 4. 防抖保存逻辑 ---
     const debouncedSave = useMemo(
-        () => debounce((currentNotes: StickyNoteData[], currentWallStyle: WallStyle) => {
-            if (!isReadyRef.current) return;
-            onSave({ version: 1, wallStyle: currentWallStyle, notes: currentNotes });
+        () => debounce((currentNotes: StickyNoteData[], currentStyle: WallStyle) => {
+            onSave({
+                version: 1,
+                wallStyle: currentStyle,
+                notes: currentNotes
+            });
         }, 1000, true),
         [onSave]
     );
 
-    useEffect(() => {
-        debouncedSave(notes, wallStyle);
-    }, [notes, wallStyle, debouncedSave]);
+    const setNotesAndSave = useCallback((
+        updater: (prev: StickyNoteData[]) => StickyNoteData[],
+        overrideStyle?: WallStyle
+    ) => {
+        setNotes(prev => {
+            const nextNotes = updater(prev);
+            debouncedSave(nextNotes, overrideStyle ?? wallStyleRef.current);
+            return nextNotes;
+        });
+    }, [debouncedSave, wallStyleRef]);
 
-    // --- 4. 几何变换辅助 ---
+    // --- 5. DOM 操作 (rAF) ---
     const applyOffsetToDOM = useCallback((x: number, y: number, scale: number) => {
-        if (containerRef.current) {
-            containerRef.current.style.backgroundPosition = `${x}px ${y}px`;
-        }
-        if (notesContainerRef.current) {
-            notesContainerRef.current.style.transformOrigin = '0 0';
-            notesContainerRef.current.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-        }
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+        rafRef.current = requestAnimationFrame(() => {
+            if (containerRef.current) {
+                // 背景图可以使用整数，防止背景抖动
+                const bgX = Math.round(x);
+                const bgY = Math.round(y);
+                containerRef.current.style.backgroundPosition = `${bgX}px ${bgY}px`;
+            }
+            if (notesContainerRef.current) {
+                notesContainerRef.current.style.transformOrigin = '0 0';
+
+                // 修改建议：始终对位移取整，即使在缩放时。
+                // 除非你追求极致的丝滑慢速缩放动画，否则取整对清晰度更有利。
+                const finalX = Math.round(x);
+                const finalY = Math.round(y);
+
+                // 确保 scale 保留小数，但位移是整数
+                notesContainerRef.current.style.transform = `translate(${finalX}px, ${finalY}px) scale(${scale})`;
+            }
+        });
     }, [containerRef, notesContainerRef]);
+    useEffect(() => {
+        return () => {
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        };
+    }, []);
 
     const screenToCanvas = useCallback((clientX: number, clientY: number) => {
-        if (!containerRef.current) return { x: 0, y: 0 };
+        if (!containerRef.current || !offsetRef.current || !scaleRef.current) return { x: 0, y: 0 };
         const rect = containerRef.current.getBoundingClientRect();
         return {
             x: (clientX - rect.left - offsetRef.current.x) / scaleRef.current,
@@ -115,22 +163,23 @@ export const useWhiteboardLogic = (
         };
     }, [containerRef]);
 
-    // --- 5. CRUD 操作 (包含同步保存) ---
+    // --- 6. 计算属性 ---
+    const isStraightened = useMemo(() => {
+        return notes.some(n => n.originalRotation !== undefined);
+    }, [notes]);
+
+    // --- 7. CRUD 操作 ---
     const updateNote = useCallback((id: string, diff: Partial<StickyNoteData>) => {
-        setNotes(prev => prev.map(n => n.id === id ? { ...n, ...diff } : n));
-    }, []);
+        setNotesAndSave(prev => prev.map(n => n.id === id ? { ...n, ...diff } : n));
+    }, [setNotesAndSave]);
 
     const deleteNote = useCallback((id: string) => {
-        setNotes(prev => {
-            const updated = prev.filter(n => n.id !== id);
-            onSave({ version: 1, wallStyle: wallStyle, notes: updated });
-            return updated;
-        });
+        setNotesAndSave(prev => prev.filter(n => n.id !== id));
         if (selectedIdRef.current === id) setSelectedNoteId(null);
-    }, [onSave, wallStyle]);
+    }, [setNotesAndSave, selectedIdRef]);
 
     const createNoteAt = useCallback((canvasX: number, canvasY: number) => {
-        const isStraightened = notesRef.current.some(n => n.originalRotation !== undefined);
+        const hasRotated = notesRef.current.some(n => n.originalRotation !== undefined);
         const newNote: StickyNoteData = {
             id: Date.now().toString(),
             x: canvasX - 80,
@@ -141,36 +190,30 @@ export const useWhiteboardLogic = (
             shape: 'square',
             style: 'realistic',
             bgStyle: 'solid',
-            rotation: isStraightened ? 0 : (Math.random() * 6 - 3),
+            rotation: hasRotated ? 0 : (Math.random() * 6 - 3),
             pinType: 'none',
             pinPos: 'center',
             type: 'sticky-note',
-            filepath: '' // ⭐ 这里是正确的逻辑，新建时为空
+            filepath: ''
         };
 
-        setNotes(prev => {
-            const updated = [...prev, newNote];
-            onSave({ version: 1, wallStyle: wallStyle, notes: updated });
-            return updated;
-        });
+        setNotesAndSave(prev => [...prev, newNote]);
         setEditingTargetId(newNote.id);
         setSelectedNoteId(newNote.id);
         setTimeout(() => setEditingTargetId(null), 100);
-    }, [onSave, wallStyle]);
+    }, [setNotesAndSave, notesRef]);
 
-    // --- 6. 剪贴板逻辑 (仅限便利贴数据) ---
+    // --- 8. 剪贴板逻辑 ---
     const handleCopy = useCallback(() => {
         const currentSelectedId = selectedIdRef.current;
         if (!currentSelectedId) return;
         const noteToCopy = notesRef.current.find(n => n.id === currentSelectedId);
         if (noteToCopy) {
-            // 复制时我们只复制数据，filepath 会包含原文件的路径（如果已保存过）
             clipboardRef.current = { ...noteToCopy };
             navigator.clipboard.writeText(noteToCopy.content).catch(err => console.error(err));
         }
-    }, []);
+    }, [selectedIdRef, notesRef]);
 
-    // ⭐【修复关键点】handlePaste
     const handlePaste = useCallback((pos?: { x: number, y: number }) => {
         if (!clipboardRef.current) return;
         const source = clipboardRef.current;
@@ -179,53 +222,47 @@ export const useWhiteboardLogic = (
         const newY = pos ? (pos.y - 80) : (source.y + 20);
 
         const newNote: StickyNoteData = {
-            ...source, // 1. 复制所有源属性（包含错误的 filepath）
+            ...source,
             id: newId,
             x: newX,
             y: newY,
             rotation: (Math.random() * 6 - 3),
-            // 2. ⭐ 强制重置 filepath 为空
-            // 这样它就会被视为属于当前打开的白板文件，而不是源文件
             filepath: ''
         };
 
-        setNotes(prev => {
-            const updated = [...prev, newNote];
-            onSave({ version: 1, wallStyle: wallStyle, notes: updated });
-            return updated;
-        });
+        setNotesAndSave(prev => [...prev, newNote]);
         setSelectedNoteId(newId);
-    }, [onSave, wallStyle]); // 这里的依赖看起来没问题
+    }, [setNotesAndSave]);
 
-    // --- 7. 快捷键监听 ---
+    // --- 9. 快捷键监听 ---
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            const activeEl = document.activeElement;
+            if (activeEl) {
+                const tagName = activeEl.tagName;
+                if (tagName === 'INPUT' || tagName === 'TEXTAREA' || (activeEl as HTMLElement).isContentEditable) {
+                    return;
+                }
+            }
+
             const container = containerRef.current;
             if (!container || !container.matches(':hover')) return;
-
-            const target = e.target as HTMLElement;
-            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
 
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
                 if (selectedIdRef.current) {
                     e.preventDefault();
-                    e.stopPropagation();
                     handleCopy();
                 }
             }
 
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-                if (clipboardRef.current) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handlePaste();
-                }
+                e.preventDefault();
+                handlePaste();
             }
 
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (selectedIdRef.current) {
                     e.preventDefault();
-                    e.stopPropagation();
                     deleteNote(selectedIdRef.current);
                 }
             }
@@ -233,10 +270,9 @@ export const useWhiteboardLogic = (
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleCopy, handlePaste, deleteNote, containerRef]);
+    }, [handleCopy, handlePaste, deleteNote, containerRef, selectedIdRef]);
 
-    // ... (后续的 handleZoomToFit 等逻辑保持不变) ...
-
+    // --- 10. 视图控制 ---
     const handleZoomToFit = useCallback(() => {
         if (!containerRef.current) return;
         const bounds = getContentBounds(notesRef.current);
@@ -245,8 +281,8 @@ export const useWhiteboardLogic = (
         if (!bounds) {
             const centerX = containerW / 2;
             const centerY = containerH / 2;
-            offsetRef.current = { x: centerX, y: centerY };
-            scaleRef.current = 1;
+            if (offsetRef.current) offsetRef.current = { x: centerX, y: centerY };
+            if (scaleRef.current) scaleRef.current = 1;
             applyOffsetToDOM(centerX, centerY, 1);
             return;
         }
@@ -261,66 +297,70 @@ export const useWhiteboardLogic = (
         const newX = (containerW / 2) - (bounds.centerX * newScale);
         const newY = (containerH / 2) - (bounds.centerY * newScale);
 
-        offsetRef.current = { x: newX, y: newY };
-        scaleRef.current = newScale;
+        if (offsetRef.current) offsetRef.current = { x: newX, y: newY };
+        if (scaleRef.current) scaleRef.current = newScale;
         applyOffsetToDOM(newX, newY, newScale);
-    }, [applyOffsetToDOM, containerRef]);
+    }, [applyOffsetToDOM, containerRef, notesRef]);
 
     const toggleStraighten = useCallback(() => {
-        const isStraightened = notesRef.current.some(n => n.originalRotation !== undefined);
-        setNotes(prev => {
-            let updated;
-            if (isStraightened) {
-                updated = prev.map(n => {
-                    const { originalRotation, ...rest } = n;
-                    return { ...rest, rotation: originalRotation ?? (Math.random() * 6 - 3) };
-                });
+        const hasRotated = notesRef.current.some(n => n.originalRotation !== undefined);
+        setNotesAndSave(prev => prev.map(n => {
+            if (hasRotated) {
+                const { originalRotation, ...rest } = n;
+                return { ...rest, rotation: originalRotation ?? (Math.random() * 6 - 3) };
             } else {
-                updated = prev.map(n => ({ ...n, originalRotation: n.rotation, rotation: 0 }));
+                return { ...n, originalRotation: n.rotation, rotation: 0 };
             }
-            onSave({ version: 1, wallStyle: wallStyle, notes: updated });
-            return updated;
-        });
-    }, [onSave, wallStyle]);
+        }));
+    }, [setNotesAndSave, notesRef]);
 
     const cycleWallStyle = useCallback(() => {
         const styles: WallStyle[] = ['dots', 'grid', 'lines', 'mesh', 'plain', 'soft'];
         setWallStyle(prev => {
-            const nextStyle = styles[(styles.indexOf(prev) + 1) % styles.length];
-            onSave({ version: 1, wallStyle: nextStyle, notes: notesRef.current });
+            const currentIndex = styles.indexOf(prev);
+            const nextStyle = styles[(currentIndex + 1) % styles.length];
+            debouncedSave(notesRef.current, nextStyle);
             return nextStyle;
         });
-    }, [onSave]);
+    }, [debouncedSave, notesRef]);
 
     const centerContent = useCallback(() => {
         if (!containerRef.current) return;
-        const bounds = getContentBounds(notesRef.current);
-        const { clientWidth: containerW, clientHeight: containerH } = containerRef.current;
 
-        if (!bounds) {
-            const centerX = containerW / 2;
-            const centerY = containerH / 2;
-            offsetRef.current = { x: centerX, y: centerY };
-            scaleRef.current = 1;
-            applyOffsetToDOM(centerX, centerY, 1);
-            return;
-        }
+        const { clientWidth, clientHeight } = containerRef.current;
 
-        const newScale = 1;
-        const newX = (containerW / 2) - (bounds.centerX * newScale);
-        const newY = (containerH / 2) - (bounds.centerY * newScale);
+        const centerX = clientWidth / 2;
+        const centerY = clientHeight / 2;
+        applyOffsetToDOM(centerX, centerY, 1);
 
-        offsetRef.current = { x: newX, y: newY };
-        scaleRef.current = newScale;
-        applyOffsetToDOM(newX, newY, newScale);
-    }, [applyOffsetToDOM, containerRef]);
+        offsetRef.current = { x: centerX, y: centerY };
+        scaleRef.current = 1;
+    }, []);
 
     return {
-        notes, wallStyle, selectedNoteId, menuState, editingTargetId,
-        isStraightened: notes.some(n => n.originalRotation !== undefined),
-        setNotes, setMenuState, setSelectedNoteId, setEditingTargetId,
-        updateNote, deleteNote, createNoteAt, handleCopy, handlePaste,
-        handleZoomToFit, toggleStraighten, cycleWallStyle, centerContent,
-        offsetRef, scaleRef, applyOffsetToDOM, screenToCanvas
+        notes,
+        wallStyle,
+        selectedNoteId,
+        menuState,
+        editingTargetId,
+        isStraightened,
+        setNotes,
+        setMenuState,
+        setSelectedNoteId,
+        setEditingTargetId,
+        updateNote,
+        deleteNote,
+        createNoteAt,
+        handleCopy,
+        handlePaste,
+        handleZoomToFit,
+        toggleStraighten,
+        cycleWallStyle,
+        centerContent,
+        offsetRef, // 导出 RefObject
+        scaleRef,
+        updateViewport, // 导出修改方法
+        applyOffsetToDOM,
+        screenToCanvas
     };
 };

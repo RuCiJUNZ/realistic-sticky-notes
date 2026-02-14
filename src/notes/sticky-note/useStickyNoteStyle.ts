@@ -43,7 +43,7 @@ export const useStickyNoteStyle = (
         try {
             const resourcePath = app.vault.adapter.getResourcePath(fullVaultPath);
             return `url(${resourcePath})`;
-        } catch (e) {
+        } catch {
             console.warn("Failed to load background image:", fullVaultPath);
             return undefined;
         }

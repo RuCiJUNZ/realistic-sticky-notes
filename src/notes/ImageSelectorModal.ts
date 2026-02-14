@@ -78,7 +78,7 @@ export class ImageSelectorModal extends Modal {
                 let relativePath = file.path;
                 if (file.path.startsWith(this.basePath)) {
                     // 去掉前面的 basePath 和可能的斜杠
-                    relativePath = file.path.substring(this.basePath.length).replace(/^[\\\/]+/, '');
+                    relativePath = file.path.substring(this.basePath.length).replace(/^[\\/]+/, '');
                 }
 
                 this.onSelect(relativePath);

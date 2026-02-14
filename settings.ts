@@ -36,11 +36,15 @@ export class BrainCoreSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'Sticky Notes' });
+        // 🟢 Fix: Use Setting.setHeading() instead of createEl('h2')
+        new Setting(containerEl)
+            .setName('Sticky notes') // Sentence case
+            .setHeading();
 
         // --- General Settings ---
         new Setting(containerEl)
-            .setName('Data Storage Path')
+            // 🟢 Fix: Sentence case ("Data storage path")
+            .setName('Data storage path')
             .setDesc('The folder path where BrainCore data and assets will be stored.')
             .addText(text => text
                 .setPlaceholder('BrainCore')
@@ -51,32 +55,48 @@ export class BrainCoreSettingTab extends PluginSettingTab {
                 }));
 
         // --- Info & Tips ---
+        // 🟢 Fix: Avoid innerHTML and inline styles
         const infoDiv = containerEl.createDiv();
-        infoDiv.style.color = 'var(--text-muted)';
-        infoDiv.style.marginTop = '20px';
-        infoDiv.style.fontSize = '0.9em';
-        infoDiv.style.lineHeight = '1.5';
+        infoDiv.setCssProps({
+            'color': 'var(--text-muted)',
+            'margin-top': '20px',
+            'font-size': '0.9em',
+            'line-height': '1.5'
+        });
 
-        infoDiv.innerHTML = `
-            <p>💡 <b>Quick Tips:</b></p>
-            <ul>
-                <li>Sticky notes are saved in markdown files within: <code>${this.plugin.settings.basePath}/</code></li>
-                <li>You can create a new board via the <b>Command Palette</b> by searching for "Insert Sticky Notes".</li>
-                <li>Double-click on the canvas to add a new note instantly.</li>
-            </ul>
-        `;
+        infoDiv.createEl('p', { text: '💡 Quick tips:' }); // Sentence case
+        const ul = infoDiv.createEl('ul');
 
-        // --- 方案四：官方胶囊风 ---
+        const li1 = ul.createEl('li');
+        li1.setText('Sticky notes are saved in markdown files within: ');
+        li1.createEl('code', { text: `${this.plugin.settings.basePath}/` });
+
+        const li2 = ul.createEl('li');
+        li2.setText('You can create a new board via the ');
+        li2.createEl('b', { text: 'Command palette' }); // Sentence case
+        li2.createSpan({ text: ' by searching for "Insert sticky notes".' });
+
+        ul.createEl('li', { text: 'Double-click on the canvas to add a new note instantly.' });
+
+        // --- Support Link ---
         const supportDiv = containerEl.createDiv();
-        supportDiv.style.textAlign = 'center';
-        supportDiv.style.marginTop = '40px';
+        supportDiv.setCssProps({
+            'text-align': 'center',
+            'margin-top': '40px'
+        });
 
-        supportDiv.innerHTML = `
-            <a href="https://ko-fi.com/sumus" target="_blank">
-                <img src="https://storage.ko-fi.com/cdn/kofi2.png?v=3"
-                     alt="Buy Me a Coffee"
-                     style="height: 36px; border: 0px;">
-            </a>
-        `;
+        const link = supportDiv.createEl('a', {
+            href: "https://ko-fi.com/sumus"
+        });
+
+        link.createEl('img', {
+            attr: {
+                src: "https://storage.ko-fi.com/cdn/kofi2.png?v=3",
+                alt: "Buy Me a Coffee"
+            }
+        }).setCssProps({
+            'height': '36px',
+            'border': '0px'
+        });
     }
 }

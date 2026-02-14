@@ -1,4 +1,4 @@
-import { Plugin, TFile, WorkspaceLeaf, MarkdownView, setIcon, debounce, Notice } from 'obsidian';
+import { Plugin, WorkspaceLeaf, MarkdownView, setIcon, debounce, Notice } from 'obsidian';
 import { BrainCoreSettings, DEFAULT_SETTINGS, BrainCoreSettingTab } from './settings';
 import { ReactHost } from './src/views/react-host';
 import { CODE_BLOCK_TAG } from './src/notes/constants';
@@ -30,7 +30,7 @@ export default class BrainCorePlugin extends Plugin {
         // ============================================================
         this.addCommand({
             id: 'insert-sticky-notes-board',
-            name: 'Insert Sticky Notes',
+            name: 'Insert sticky notes',
             editorCallback: (editor) => {
                 editor.replaceSelection(`\`\`\`${CODE_BLOCK_TAG}\nNew Board\n\`\`\``);
             }
@@ -38,8 +38,9 @@ export default class BrainCorePlugin extends Plugin {
 
         this.addCommand({
             id: 'open-welcome-page',
-            name: 'Open Welcome Page',
-            callback: () => this.activateWelcomeView()
+            name: 'Open welcome page',
+            // 🟢 Fix: Mark async function as ignored with 'void'
+            callback: () => { void this.activateWelcomeView(); }
         });
 
         this.app.workspace.onLayoutReady(async () => {
@@ -58,7 +59,8 @@ export default class BrainCorePlugin extends Plugin {
 
         // 1. 切换标签页时检测
         this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
-            if (leaf) debouncedCheck(leaf);
+            // 🟢 Fix: debounced function returns a Promise here because checkPageWidth is async
+            if (leaf) void debouncedCheck(leaf);
         }));
 
         // 2. 布局变化时检测
@@ -66,7 +68,8 @@ export default class BrainCorePlugin extends Plugin {
             // ⭐ 关键修复：只获取当前活动的 Markdown 视图，绝对不让它自动创建新 Tab
             const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView)?.leaf;
             if (activeLeaf) {
-                debouncedCheck(activeLeaf);
+                // 🟢 Fix: Mark as void
+                void debouncedCheck(activeLeaf);
             }
         }));
 
@@ -75,7 +78,8 @@ export default class BrainCorePlugin extends Plugin {
             const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
             // 确保文件匹配且视图存在
             if (activeView && activeView.file === file) {
-                debouncedCheck(activeView.leaf);
+                // 🟢 Fix: Mark as void
+                void debouncedCheck(activeView.leaf);
             }
         }));
     }
@@ -98,7 +102,7 @@ export default class BrainCorePlugin extends Plugin {
         }
     }
 
-    async onunload() {
+    onunload() {
         // 清理逻辑 (通常不需要手动清理 View，Obsidian 会处理)
     }
 
@@ -109,8 +113,7 @@ export default class BrainCorePlugin extends Plugin {
     async checkPageWidth(leaf: WorkspaceLeaf | null) {
         // 1. 基础校验：必须是 MarkdownView
         if (!leaf || !(leaf.view instanceof MarkdownView)) return;
-
-        const view = leaf.view as MarkdownView;
+        const view = leaf.view;
         const file = view.file;
         if (!file) return;
 
@@ -124,8 +127,7 @@ export default class BrainCorePlugin extends Plugin {
         try {
             const content = await this.app.vault.cachedRead(file);
             hasStickyNote = content.includes(`\`\`\`${CODE_BLOCK_TAG}`);
-        } catch (e) {
-            // 读取文件失败 (可能文件被删除或不可读)，默认无 sticky note
+        } catch { // <--- Look, no (e)!
             hasStickyNote = false;
         }
 
@@ -144,33 +146,39 @@ export default class BrainCorePlugin extends Plugin {
             // 显示按钮
             if (!btn) btn = this.createToggleBtn(view);
             if (btn) {
-                btn.style.display = '';
-                this.updateIconState(btn, true); // true = 当前是全宽
+                // 🟢 修复：使用 setCssProps 清除 display 属性 (恢复默认显示)
+                btn.setCssProps({ 'display': '' });
+                this.updateIconState(btn, true);
             }
 
         }
-        // 情况 B: 有便利贴 但 用户强制设为标准宽 -> 标准宽
+        // 情况 B: ...
         else if (hasStickyNote && userForceStandard) {
             view.containerEl.removeClass('brain-core-full-width');
 
             // 显示按钮
             if (!btn) btn = this.createToggleBtn(view);
             if (btn) {
-                btn.style.display = '';
-                this.updateIconState(btn, false); // false = 当前是标准宽
+                // 🟢 修复：使用 setCssProps
+                btn.setCssProps({ 'display': '' });
+                this.updateIconState(btn, false);
             }
         }
-        // 情况 C: 没便利贴 -> 清理
+        // 情况 C: ...
         else {
             view.containerEl.removeClass('brain-core-full-width');
-            if (btn) btn.style.display = 'none';
+            if (btn) {
+                // 🟢 修复：使用 setCssProps 隐藏
+                btn.setCssProps({ 'display': 'none' });
+            }
         }
     }
 
     // 辅助：创建按钮
     createToggleBtn(view: MarkdownView) {
         // addAction 有时可能返回 undefined (极少数情况)
-        const btn = view.addAction('minimize', '切换全宽', () => this.toggleWidth(view));
+        // 🟢 Fix: toggleWidth is async, wrapped in void inside the callback
+        const btn = view.addAction('minimize', '切换全宽', () => { void this.toggleWidth(view); });
         if (btn) {
             this.widthToggleBtns.set(view, btn);
         }

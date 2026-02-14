@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Platform, App, TFile, normalizePath, Notice } from 'obsidian';
+import { Platform, App, TFile, normalizePath } from 'obsidian';
 import { MenuState, StickyNoteData, NoteColor } from '../types';
 import { PALETTES } from '../constants';
 import { BrainCoreSettings } from '../../../settings';
@@ -29,9 +29,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // 1. 扫描资源文件夹
-    const refreshAssets = async () => {
+    const refreshAssets = () => {
         const assetPath = normalizePath(`${settings.basePath}/Assets`);
         const folder = app.vault.getAbstractFileByPath(assetPath);
+
         if (folder) {
             const files = app.vault.getFiles().filter(f =>
                 f.path.startsWith(assetPath + '/') &&
@@ -40,7 +41,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             setAssetFiles(files.sort((a, b) => b.stat.mtime - a.stat.mtime));
         }
     };
-
     useEffect(() => {
         if (menuState.visible) {
             refreshAssets();
@@ -101,7 +101,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             await app.vault.createBinary(finalPath, await file.arrayBuffer());
             onUpdate(note.id, { bgStyle: 'custom', bgImage: `Assets/${fileName}` });
             await refreshAssets();
-        } catch (err) { new Notice("上传失败"); }
+        } catch (err) {
+            console.error("Sticky Notes: Failed to upload background image", err);
+        }
         e.target.value = '';
     };
 

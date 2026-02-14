@@ -2,33 +2,61 @@
 
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { Notice, TFile, normalizePath, App, MarkdownPostProcessorContext } from 'obsidian';
-// 假设这些导入路径是正确的
+import { Notice, TFile, App, MarkdownPostProcessorContext } from 'obsidian';
 import { RegisterWidget, BaseWidget, WidgetConfig } from '../../core';
 import { WhiteboardComponent } from './board/Whiteboard';
 import { WhiteboardFileManager } from './managers/WhiteboardFileManager';
 import BrainCorePlugin from '../../main';
 
+// =============================================================================
+// 🟢 1. 定义扩展接口 (用于解决 "Unexpected any")
+// =============================================================================
+
+// 扩展 App 接口，声明 plugins 属性 (Obsidian 内部 API)
+interface InternalApp extends App {
+    plugins: {
+        getPlugin(id: string): BrainCorePlugin | undefined;
+        enabledPlugins: Set<string>;
+    };
+}
+
+// 扩展 WidgetConfig，声明 context 属性
+interface WidgetConfigWithContext extends WidgetConfig {
+    context?: MarkdownPostProcessorContext;
+    content?: string; // 确保 content 也被正确定义
+}
+
+// =============================================================================
+// 2. Widget 实现
+// =============================================================================
+
 @RegisterWidget('bc-whiteboard')
 export class WhiteboardWidget extends BaseWidget {
     private root: Root | null = null;
     private manager: WhiteboardFileManager | null = null;
-    private plugin: BrainCorePlugin;
+    private plugin: BrainCorePlugin | undefined; // plugin 可能会初始化失败，所以是 undefined
     private currentBoardName: string = "default";
     private ctx: MarkdownPostProcessorContext | null = null;
 
     constructor(app: App, container: HTMLElement, config: WidgetConfig) {
         super(app, container, config);
-        this.ctx = (config as any).context;
-        if (config.content && config.content.trim()) {
-            this.currentBoardName = config.content.trim();
+
+        // 🟢 修复：使用类型断言为具体的扩展接口，而不是 any
+        const extendedConfig = config as WidgetConfigWithContext;
+        this.ctx = extendedConfig.context || null;
+
+        if (extendedConfig.content && extendedConfig.content.trim()) {
+            this.currentBoardName = extendedConfig.content.trim();
         }
     }
 
     private getPluginInstance(): BrainCorePlugin {
         if (BrainCorePlugin.instance) return BrainCorePlugin.instance;
-        // 注意：这里的 ID 'sticky-notes' 必须和 manifest.json 里的 id 一致
-        const instance = (this.app as any).plugins.getPlugin('realistic-sticky-notes');
+
+        // 🟢 修复：将 app 断言为 InternalApp
+        const internalApp = this.app as InternalApp;
+        const instance = internalApp.plugins.getPlugin('realistic-sticky-notes');
+
         if (!instance) {
             console.error("[BrainCore] Critical Error: Plugin instance not found!");
             throw new Error("Plugin instance not found");
@@ -41,8 +69,8 @@ export class WhiteboardWidget extends BaseWidget {
 
         try {
             this.plugin = this.getPluginInstance();
-        } catch (e) {
-            return; // 无法获取插件实例，停止渲染防止崩溃
+        } catch {
+            return;
         }
 
         // 初始化文件管理器
@@ -88,10 +116,10 @@ export class WhiteboardWidget extends BaseWidget {
     }
 
     private async refreshReact(boards: string[]) {
-        if (!this.manager || !this.root) return;
+        // 确保 plugin 和 manager 存在
+        if (!this.manager || !this.root || !this.plugin) return;
 
         // 1. 读取当前白板数据
-        // loadBoard 现在返回 { config: BoardConfig, notes: StickyNoteData[] }
         const data = await this.manager.loadBoard(this.currentBoardName);
 
         // 2. 渲染组件
@@ -117,52 +145,80 @@ export class WhiteboardWidget extends BaseWidget {
                 }}
 
                 // 回调：切换白板
-                onSwitchBoard={async (newName) => {
-                    this.currentBoardName = newName;
-                    const latestBoards = await this.manager?.listBoards() || [];
-                    this.refreshReact(latestBoards);
-                    await this.updateCodeBlock(newName);
-                }}
-
-                // 回调：新建白板
-                onCreateBoard={async (newName) => {
-                    const success = await this.manager?.createBoard(newName);
-                    if (success) {
-                        new Notice(`已创建白板: ${newName}`);
+                onSwitchBoard={(newName) => {
+                    // 定义异步逻辑
+                    const switchTask = async () => {
                         this.currentBoardName = newName;
                         const latestBoards = await this.manager?.listBoards() || [];
                         this.refreshReact(latestBoards);
                         await this.updateCodeBlock(newName);
-                    }
+                    };
+
+                    // 执行并捕获错误 (Obsidian 审核通常要求处理 catch)
+                    switchTask().catch((error) => {
+                        console.error("Failed to switch board:", error);
+                        // 如果需要，可以使用 new Notice("切换白板失败") 提示用户
+                    });
+                }}
+                // 回调：新建白板
+                onCreateBoard={(newName) => {
+                    // 显式执行异步任务
+                    (async () => {
+                        try {
+                            const success = await this.manager?.createBoard(newName);
+                            if (success) {
+                                new Notice(`✅ 已创建白板: ${newName}`);
+                                this.currentBoardName = newName;
+
+                                // 并发或顺序执行后续更新
+                                const latestBoards = await this.manager?.listBoards() || [];
+                                this.refreshReact(latestBoards);
+                                await this.updateCodeBlock(newName);
+                            }
+                        } catch (error) {
+                            // 捕获可能的文件写入失败或权限问题
+                            console.error("Failed to create board:", error);
+                            new Notice("❌ 创建白板失败，请检查控制台日志");
+                        }
+                    })();
                 }}
 
                 // ⭐ 修复：新增删除回调
-                onDeleteBoard={async (name) => {
-                    // 1. 调用 manager 删除文件 (假设 manager 有 deleteBoard 方法)
-                    const success = await this.manager?.deleteBoard(name);
+                onDeleteBoard={(name) => {
+                    // 立即执行异步闭包
+                    (async () => {
+                        try {
+                            // 1. 调用 manager 删除文件
+                            const success = await this.manager?.deleteBoard(name);
 
-                    if (success) {
-                        new Notice(`已删除白板: ${name}`);
+                            if (success) {
+                                new Notice(`🗑️ 已删除白板: ${name}`);
 
-                        // 2. 获取最新列表
-                        const latestBoards = await this.manager?.listBoards() || [];
+                                // 2. 获取最新列表
+                                const latestBoards = await this.manager?.listBoards() || [];
 
-                        // 3. 逻辑判断：如果删除的是当前正在显示的白板，需要自动切换
-                        if (name === this.currentBoardName) {
-                            if (latestBoards.length > 0) {
-                                // 切换到列表中的第一个
-                                this.currentBoardName = latestBoards[0];
-                                await this.updateCodeBlock(this.currentBoardName);
-                            } else {
-                                // 如果删光了，可能需要处理空状态
-                                this.currentBoardName = "";
-                                // 可以选择清空 CodeBlock 或者显示默认信息
+                                // 3. 逻辑判断：如果删除的是当前正在显示的白板，需要自动切换
+                                if (name === this.currentBoardName) {
+                                    if (latestBoards.length > 0) {
+                                        // 切换到列表中的第一个
+                                        this.currentBoardName = latestBoards[0];
+                                        await this.updateCodeBlock(this.currentBoardName);
+                                    } else {
+                                        // 如果删光了，清空状态
+                                        this.currentBoardName = "";
+                                        await this.updateCodeBlock(""); // 建议显式清空，防止残余内容
+                                    }
+                                }
+
+                                // 4. 刷新 React 视图
+                                this.refreshReact(latestBoards);
                             }
+                        } catch (error) {
+                            // 关键：捕获删除过程中的异常（如文件被占用、权限不足等）
+                            console.error("Failed to delete board:", error);
+                            new Notice("❌ 删除失败：无法移除该白板文件");
                         }
-
-                        // 4. 刷新 React 视图
-                        this.refreshReact(latestBoards);
-                    }
+                    })();
                 }}
             />
         );
@@ -170,6 +226,7 @@ export class WhiteboardWidget extends BaseWidget {
 
     onunload() {
         if (this.root) {
+            // 使用 setTimeout 确保在 React 渲染周期结束后卸载
             setTimeout(() => {
                 this.root?.unmount();
                 this.root = null;

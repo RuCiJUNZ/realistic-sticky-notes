@@ -1,5 +1,5 @@
 // src/utils/ConfirmModal.ts
-import { App, Modal, Setting, ButtonComponent } from 'obsidian';
+import { App, Modal, Setting } from 'obsidian';
 
 export class ConfirmModal extends Modal {
     private title: string;
@@ -21,11 +21,6 @@ export class ConfirmModal extends Modal {
         contentEl.createEl('p', { text: this.message });
 
         const buttonContainer = contentEl.createDiv({ cls: 'bc-modal-buttons' });
-        // 简单样式：让按钮右对齐
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.justifyContent = 'flex-end';
-        buttonContainer.style.gap = '12px';
-        buttonContainer.style.marginTop = '24px';
 
         new Setting(buttonContainer)
             .addButton((btn) =>

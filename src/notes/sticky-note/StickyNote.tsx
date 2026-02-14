@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useGesture, FullGestureState } from '@use-gesture/react';
-import { App, Platform, MarkdownRenderer, Component, TFile, TFolder, normalizePath, Notice } from 'obsidian';
+import { App, Platform, MarkdownRenderer, Component, normalizePath, Notice } from 'obsidian';
 import { StickyNoteData } from '../types';
 import { BrainCoreSettings } from '../../../settings';
 import { StickyNotePin } from './StickyNotePin';
@@ -60,7 +60,10 @@ export const StickyNoteItem: React.FC<StickyNoteItemProps> = ({
         component.load();
         const activeFile = app.workspace.getActiveFile();
         const sourcePath = activeFile ? activeFile.path : '';
-        MarkdownRenderer.render(app, data.content || (isStickerMode ? "" : " "), container, sourcePath, component);
+
+        // 🟢 Fix: Use void operator to ignore the promise
+        void MarkdownRenderer.render(app, data.content || (isStickerMode ? "" : " "), container, sourcePath, component);
+
         return () => component.unload();
     }, [app, data.content, isEditing, isStickerMode]);
 
@@ -71,7 +74,8 @@ export const StickyNoteItem: React.FC<StickyNoteItemProps> = ({
         if (internalLink) {
             e.preventDefault(); e.stopPropagation();
             const href = internalLink.getAttribute('data-href');
-            if (href) app.workspace.openLinkText(href, '', true);
+            // 🟢 Fix: openLinkText is async, use void
+            if (href) void app.workspace.openLinkText(href, '', true);
             return;
         }
         const checkbox = target.closest('.task-list-item-checkbox') as HTMLInputElement;
@@ -226,7 +230,9 @@ export const StickyNoteItem: React.FC<StickyNoteItemProps> = ({
 
     return (
         <div
-            {...bind() as any}
+            // 🟢 修复：用 React.DOMAttributes 代替 any
+            {...(bind() as unknown as React.DOMAttributes<HTMLDivElement>)}
+
             onDoubleClick={(e) => {
                 if (isEditing || isInteractiveElement(e.target as HTMLElement)) return;
                 e.stopPropagation();
@@ -249,7 +255,9 @@ export const StickyNoteItem: React.FC<StickyNoteItemProps> = ({
                     value={localContent}
                     onChange={(e) => setLocalContent(e.target.value)}
                     // ⭐ 绑定 onPaste 事件
-                    onPaste={handlePaste}
+                    // 🟢 Fix: handlePaste is async, wrap in void if passed inline, but here it's passed by reference which is fine for React event handlers.
+                    // React event handlers that return promises are generally ignored by React itself, but explicit void wrapper is safer if lint complains.
+                    onPaste={(e) => { void handlePaste(e); }}
                     onKeyDown={(e) => {
                         // 支持 Shift+Enter 换行，Enter 退出 (桌面端)
                         if (e.key === 'Enter' && !e.shiftKey && !Platform.isMobile) {

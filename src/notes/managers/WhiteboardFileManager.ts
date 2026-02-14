@@ -143,24 +143,33 @@ export class WhiteboardFileManager {
             });
             await Promise.all(chunkPromises);
         }
-
-        // 3. 清理孤儿文件 (UI 中不存在，但磁盘上存在的文件)
         const deletePromises: Promise<void>[] = [];
+
         for (const existingPath of existingFilesMap) {
             if (!activeFilePaths.has(existingPath)) {
                 const file = this.app.vault.getAbstractFileByPath(existingPath);
+
                 if (file instanceof TFile) {
                     const cache = this.app.metadataCache.getFileCache(file);
+
                     if (cache?.frontmatter?.type === 'sticky-note') {
-                        deletePromises.push(
-                            this.app.vault.trash(file, true)
-                                .then(() => console.log(`[StickyNotes] Deleted orphan: ${existingPath}`))
-                        );
+                        const deletePromise = this.app.vault.trash(file, true)
+                            .then(() => {
+                                console.debug(`[StickyNotes] Deleted orphan: ${existingPath}`);
+                            })
+                            .catch((err) => {
+                                console.error(`[StickyNotes] Failed to delete orphan: ${existingPath}`, err);
+                            });
+
+                        deletePromises.push(deletePromise);
                     }
                 }
             }
         }
-        await Promise.all(deletePromises);
+
+        if (deletePromises.length > 0) {
+            await Promise.all(deletePromises);
+        }
     }
 
     private async parseNoteFile(file: TFile): Promise<StickyNoteData | null> {
@@ -213,18 +222,23 @@ export class WhiteboardFileManager {
         let file: TFile | null = null;
         let isNewFile = false;
 
-        // 如果没有路径或路径不存在，视为新文件
-        if (!filePath || !(await this.app.vault.adapter.exists(filePath))) {
+        let abstractFile = filePath ? this.app.vault.getAbstractFileByPath(filePath) : null;
+
+        if (!filePath || !(abstractFile instanceof TFile)) {
             const fileName = `Note ${note.id}.md`;
             filePath = normalizePath(`${folderPath}/${fileName}`);
-            // 再次检查生成的名字是否存在 (防御性编程)
-            if (await this.app.vault.adapter.exists(filePath)) {
-                file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+
+            const generatedAbstractFile = this.app.vault.getAbstractFileByPath(filePath);
+
+            if (generatedAbstractFile instanceof TFile) {
+                file = generatedAbstractFile;
+                isNewFile = false; // 找到了已存在的文件
             } else {
-                isNewFile = true;
+                isNewFile = true; // 确定是需要创建的新文件
             }
         } else {
-            file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+            file = abstractFile;
+            isNewFile = false;
         }
 
         // 构建新的文件内容字符串 (Frontmatter + Body)
