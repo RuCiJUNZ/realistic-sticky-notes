@@ -129,25 +129,32 @@ export const useWhiteboardLogic = (
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
         rafRef.current = requestAnimationFrame(() => {
+            // 1. 背景图位置更新
             if (containerRef.current) {
-                // 背景图可以使用整数，防止背景抖动
                 const bgX = Math.round(x);
                 const bgY = Math.round(y);
-                containerRef.current.style.backgroundPosition = `${bgX}px ${bgY}px`;
-            }
-            if (notesContainerRef.current) {
-                notesContainerRef.current.style.transformOrigin = '0 0';
 
-                // 修改建议：始终对位移取整，即使在缩放时。
-                // 除非你追求极致的丝滑慢速缩放动画，否则取整对清晰度更有利。
+                // 🟢 修复：使用 setCssProps
+                containerRef.current.setCssProps({
+                    'background-position': `${bgX}px ${bgY}px`
+                });
+            }
+
+            // 2. 笔记容器变换更新
+            if (notesContainerRef.current) {
+                // 🔴 删除：notesContainerRef.current.style.transformOrigin = '0 0';
+                // 解释：这行代码已被移至 CSS 类 .brain-core-notes-container 中
+
                 const finalX = Math.round(x);
                 const finalY = Math.round(y);
 
-                // 确保 scale 保留小数，但位移是整数
-                notesContainerRef.current.style.transform = `translate(${finalX}px, ${finalY}px) scale(${scale})`;
+                // 🟢 修复：使用 setCssProps 设置 transform
+                notesContainerRef.current.setCssProps({
+                    'transform': `translate(${finalX}px, ${finalY}px) scale(${scale})`
+                });
             }
         });
-    }, [containerRef, notesContainerRef]);
+    }, [containerRef, notesContainerRef]); // 依赖项通常是稳定的 ref，其实写 [] 也可以，但写上无妨
     useEffect(() => {
         return () => {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);

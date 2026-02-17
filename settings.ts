@@ -36,9 +36,9 @@ export class BrainCoreSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
-        // 🟢 Fix: Use Setting.setHeading() instead of createEl('h2')
+        // 🟢 Fix: Sentence case for heading
         new Setting(containerEl)
-            .setName('Sticky notes') // Sentence case
+            .setName('Sticky notes')
             .setHeading();
 
         // --- General Settings ---
@@ -55,7 +55,6 @@ export class BrainCoreSettingTab extends PluginSettingTab {
                 }));
 
         // --- Info & Tips ---
-        // 🟢 Fix: Avoid innerHTML and inline styles
         const infoDiv = containerEl.createDiv();
         infoDiv.setCssProps({
             'color': 'var(--text-muted)',
@@ -64,7 +63,8 @@ export class BrainCoreSettingTab extends PluginSettingTab {
             'line-height': '1.5'
         });
 
-        infoDiv.createEl('p', { text: '💡 Quick tips:' }); // Sentence case
+        // 🟢 Fix: Sentence case (removed colon for cleaner UI header style)
+        infoDiv.createEl('p', { text: '💡 Quick tips' });
         const ul = infoDiv.createEl('ul');
 
         const li1 = ul.createEl('li');
@@ -73,7 +73,9 @@ export class BrainCoreSettingTab extends PluginSettingTab {
 
         const li2 = ul.createEl('li');
         li2.setText('You can create a new board via the ');
-        li2.createEl('b', { text: 'Command palette' }); // Sentence case
+        // 🟢 Fix: Sentence case ("Command palette")
+        li2.createEl('b', { text: 'Command palette' });
+        // 🟢 Fix: Sentence case for the command name (must match plugin definition)
         li2.createSpan({ text: ' by searching for "Insert sticky notes".' });
 
         ul.createEl('li', { text: 'Double-click on the canvas to add a new note instantly.' });
@@ -92,7 +94,8 @@ export class BrainCoreSettingTab extends PluginSettingTab {
         link.createEl('img', {
             attr: {
                 src: "https://storage.ko-fi.com/cdn/kofi2.png?v=3",
-                alt: "Buy Me a Coffee"
+                // 🟢 Fix: Sentence case for Alt text ("Buy me a coffee")
+                alt: "Buy me a coffee"
             }
         }).setCssProps({
             'height': '36px',

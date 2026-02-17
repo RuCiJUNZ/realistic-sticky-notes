@@ -423,3 +423,12 @@
        height: 20px;
        stroke-width: 2px;
    }
+
+
+   /* 给你的笔记容器添加这个类 */
+   .brain-core-notes-container {
+       transform-origin: 0 0;
+       /* 其他静态样式，如 absolute, top: 0, left: 0 等 */
+       will-change: transform;
+       /* 🟢 性能优化：告诉浏览器这个元素会频繁变化 */
+   }

@@ -4,8 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { App, MarkdownPostProcessorContext, Notice, TFile } from 'obsidian';
 import { BrainCoreSettings } from '../../settings';
 import BrainCorePlugin from '../../main';
-import { ConfirmModal } from '../notes/board/ConfirmModal'; // 导入弹窗类
-// 引入你的 UI 组件和文件管理器
+import { ConfirmModal } from '../notes/board/ConfirmModal';
 import { WhiteboardComponent } from '../notes/board/Whiteboard';
 import { WhiteboardFileManager } from '../notes/managers/WhiteboardFileManager';
 import { WhiteboardData } from '../notes/types';
@@ -21,7 +20,7 @@ interface DashboardProps {
 }
 
 // ============================================================
-// 1. 逻辑容器组件 (增强版)
+// 1. Logic Container
 // ============================================================
 const WhiteboardContainer: React.FC<{
     app: App;
@@ -40,7 +39,7 @@ const WhiteboardContainer: React.FC<{
         managerRef.current = new WhiteboardFileManager(app, plugin);
     }
 
-    // 更新 Markdown 代码块
+    // Update Markdown code block
     const updateMarkdownCodeBlock = async (newName: string) => {
         if (!ctx) return;
         const sectionInfo = ctx.getSectionInfo(containerEl);
@@ -56,7 +55,7 @@ const WhiteboardContainer: React.FC<{
         }
     };
 
-    // 数据加载逻辑
+    // Data loading logic
     const loadData = async (targetName: string) => {
         if (!managerRef.current) return;
         try {
@@ -68,13 +67,11 @@ const WhiteboardContainer: React.FC<{
                 list = ['default'];
             }
 
-            // 确保 targetName 存在，如果已被删除则回退到 default 或列表第一个
+            // Ensure targetName exists; fallback if deleted
             let safeName = targetName;
             if (!list.includes(targetName)) {
                 safeName = list[0] || 'default';
                 setCurrentName(safeName);
-                // 注意：这里可能需要更新 markdown，视具体逻辑而定
-                // updateMarkdownCodeBlock(safeName);
             }
 
             const { config, notes } = await managerRef.current.loadBoard(safeName);
@@ -88,44 +85,42 @@ const WhiteboardContainer: React.FC<{
             });
         } catch (error) {
             console.error("Load Failed:", error);
-            new Notice("加载失败");
+            new Notice("Load failed");
         }
     };
 
     useEffect(() => {
-        loadData(currentName);
+        void loadData(currentName);
     }, [currentName]);
 
     // Delete handler function
     const handleDeleteBoard = (nameToDelete: string) => {
         // Prevent deleting the last remaining board
         if (fileList.length <= 1) {
-            new Notice("Cannot delete: At least one whiteboard is required.");
+            new Notice("Cannot delete: at least one whiteboard is required.");
             return;
         }
 
         // Invoke Obsidian-style confirmation modal
         new ConfirmModal(
             app,
-            'Delete Board',
+            'Delete board',
             `Are you sure you want to delete "${nameToDelete}"? This action cannot be undone.`,
-            // ✅ Fix: Use a synchronous function here to return 'void' as expected
             () => {
+                // 🟢 修复 1: 添加 void
                 // Trigger an internal asynchronous closure
-                (async () => {
+                void (async () => {
                     try {
                         const success = await managerRef.current?.deleteBoard(nameToDelete);
                         if (success) {
                             new Notice(`🗑️ Deleted: ${nameToDelete}`);
 
-                            // Switch to the first board in the list (or 'default') after deletion
+                            // Switch to the first board in the list
                             const newList = await managerRef.current?.listBoards();
                             const nextBoard = newList && newList.length > 0 ? newList[0] : 'default';
 
                             setCurrentName(nextBoard);
                             await updateMarkdownCodeBlock(nextBoard);
-
-                            // Note: Data reloading is handled by useEffect hooks
                         } else {
                             new Notice("❌ Delete failed");
                         }
@@ -142,10 +137,6 @@ const WhiteboardContainer: React.FC<{
 
     return (
         <WhiteboardComponent
-            // ⭐ 核心修复：移除 key 属性
-            // 之前是 key={currentName}，这会导致每次切换白板组件都重新挂载，从而重置工具栏状态。
-            // 移除后，组件会复用，你需要确保 WhiteboardComponent 内部监听了 initialNotes 的变化来更新画布。
-
             app={app}
             settings={plugin.settings}
             plugin={plugin}
@@ -165,39 +156,32 @@ const WhiteboardContainer: React.FC<{
             }}
 
             onCreateBoard={(newName) => {
-                // 1. 立即执行一个异步闭包
-                (async () => {
+                // 🟢 修复 2: 添加 void
+                void (async () => {
                     try {
-                        // 执行创建逻辑
                         const success = await managerRef.current?.createBoard(newName);
 
                         if (success) {
                             new Notice(`✅ Created: ${newName}`);
-
-                            // 2. 更新 React 状态（同步）
                             setCurrentName(newName);
-
-                            // 3. 更新 Markdown 源码（异步）
                             await updateMarkdownCodeBlock(newName);
                         } else {
-                            // 这种情况通常是 createBoard 内部返回了 false（比如文件已存在）
                             new Notice(`⚠️ Failed to create "${newName}". It might already exist.`);
                         }
                     } catch (error) {
-                        // 4. 异常捕获：Obsidian 审核非常看重这里
                         console.error("Error creating board:", error);
-                        new Notice("❌ Error: Could not create board. Check console for details.");
+                        new Notice("❌ Error: could not create board. Check console for details.");
                     }
                 })();
             }}
-            // 传入删除方法
+
             onDeleteBoard={handleDeleteBoard}
         />
     );
 };
 
 // ============================================================
-// 2. 主 Dashboard 组件 (外壳)
+// 2. Main Dashboard Component (No changes needed here)
 // ============================================================
 export const Dashboard: React.FC<DashboardProps> = ({
     app,
@@ -207,7 +191,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     containerEl,
     initialHeight = 600
 }) => {
-    // 拖拽逻辑保持不变
     const [containerHeight, setContainerHeight] = useState(initialHeight);
     const [isDragging, setIsDragging] = useState(false);
     const startYRef = useRef(0);
@@ -267,7 +250,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div
                 className={`brain-core-resize-handle ${isDragging ? 'is-dragging' : ''}`}
                 onPointerDown={handleResizeStart}
-                title="拖拽调整高度"
+                title="Drag to resize height"
                 style={{
                     position: 'absolute',
                     bottom: 0,

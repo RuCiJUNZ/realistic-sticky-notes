@@ -89,30 +89,73 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         border: '1px solid var(--background-modifier-border)',
         transition: 'top 0.2s ease, height 0.2s ease', // 增加平滑感
     };
+    // 1. 定义一个辅助函数来读取文件 (放在组件外部或类内部均可)
+    const readFileAsBuffer = (file: File): Promise<ArrayBuffer> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                if (reader.result instanceof ArrayBuffer) {
+                    resolve(reader.result);
+                } else {
+                    reject(new Error("Failed to read file buffer"));
+                }
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    };
 
+    // 2. 修改后的 handleUpload
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !note) return;
+
+        // 规范化路径
         const assetPath = normalizePath(`${settings.basePath}/Assets`);
-        if (!app.vault.getAbstractFileByPath(assetPath)) await app.vault.createFolder(assetPath);
+
+        // 检查文件夹是否存在 (使用 Vault API)
+        if (!app.vault.getAbstractFileByPath(assetPath)) {
+            await app.vault.createFolder(assetPath);
+        }
+
+        // 生成唯一文件名
         const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
         const finalPath = normalizePath(`${assetPath}/${fileName}`);
+
         try {
-            await app.vault.createBinary(finalPath, await file.arrayBuffer());
+            // 🟢 Fix: 使用 FileReader 读取，解决 "Unexpected await" 问题
+            const buffer = await readFileAsBuffer(file);
+
+            // 创建二进制文件
+            await app.vault.createBinary(finalPath, buffer);
+
+            // 更新状态
             onUpdate(note.id, { bgStyle: 'custom', bgImage: `Assets/${fileName}` });
+
+            // 刷新资源 (如果有这个方法的话)
             await refreshAssets();
         } catch (err) {
             console.error("Sticky Notes: Failed to upload background image", err);
+            // 建议：添加用户提示
+            // new Notice("Failed to upload image.");
         }
+
+        // 重置 input，允许重复上传同一文件
         e.target.value = '';
     };
-
     return createPortal(
         <>
             <div className="bc-ctx-overlay" onClick={onClose} onContextMenu={e => { e.preventDefault(); onClose(); }} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9998 }} />
 
             <div className="bc-ctx-menu mini-visual" style={menuStyle} onClick={e => e.stopPropagation()}>
-                <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleUpload} accept="image/*" />
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    // 🟢 修复：改为箭头函数，并使用 void 忽略 Promise
+                    onChange={(e) => { void handleUpload(e); }}
+                    accept="image/*"
+                />
 
                 {note ? (
                     <div className="bc-visual-grid">

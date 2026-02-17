@@ -80,13 +80,11 @@ export abstract class BaseWidget extends MarkdownRenderChild {
     abstract render(): Promise<void>;
 
     /**
-     * 🟢 生命周期钩子：当容器尺寸变化时触发
-     */
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         * 🟢 生命周期钩子：当容器尺寸变化时触发
+         */
     onResize(_height: number, _width: number): void {
-        // 默认空实现
+        // 默认空实现，子类可重写
     }
-
     /**
      * 🟢 生命周期钩子：刷新/重载
      */

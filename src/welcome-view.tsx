@@ -36,10 +36,9 @@ const Icons = {
 // ============================================================
 const WelcomePage: React.FC<{ app: App, onClose: () => void }> = ({ app, onClose }) => {
 
-    // 修改 1: 移除外层的 async，改用内部异步闭包
-    // 这样 handleCreate 本身返回 void，满足 onClick 的类型要求
     const handleCreate = () => {
-        (async () => {
+        // 🟢 修复：添加 'void' 关键字
+        void (async () => {
             const fileName = `Sticky board ${Date.now()}.md`;
             const content = `# My sticky notes\n\nDouble-click anywhere to add a note.\n\n\`\`\`sticky-note\nNew Board\n\`\`\``;
 
@@ -49,12 +48,11 @@ const WelcomePage: React.FC<{ app: App, onClose: () => void }> = ({ app, onClose
                 // 打开新文件
                 await app.workspace.getLeaf(true).openFile(file);
 
-                // ✅ 修改 2: 成功后调用 onClose 关闭欢迎页
+                // 关闭欢迎页
                 onClose();
             } catch (e) {
                 console.error("Failed to create file", e);
-                // 建议: 添加一个 Notice 提示用户失败
-                // new Notice("创建失败");
+                // 🟢 建议：添加英文提示，提升 UX
             }
         })();
     };

@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, MarkdownView, setIcon, debounce, Notice } from 'obsidian';
+import { Plugin, MarkdownView, setIcon, debounce, Notice, type WorkspaceLeaf } from 'obsidian';
 import { BrainCoreSettings, DEFAULT_SETTINGS, BrainCoreSettingTab } from './settings';
 import { ReactHost } from './src/views/react-host';
 import { CODE_BLOCK_TAG } from './src/notes/constants';
