@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
-// 🟢 Fix 1: 使用 'import type' 导入接口，避免 "error type" 报错
+// 🟢 Fix 1: 正确引入类型，避免编译报错
 import { Notice, TFile, App, type MarkdownPostProcessorContext } from 'obsidian';
 import { RegisterWidget, BaseWidget, WidgetConfig } from '../../core';
 import { WhiteboardComponent } from './board/Whiteboard';
@@ -12,9 +12,6 @@ import BrainCorePlugin from '../../main';
 // =============================================================================
 // 1. 定义扩展接口
 // =============================================================================
-
-// 🟢 Fix 2: 移除了 InternalApp 接口定义
-// 原因：Obsidian 审核不允许通过 app.plugins 获取实例，必须使用单例模式。
 
 // 扩展 WidgetConfig，声明 context 属性
 interface WidgetConfigWithContext extends WidgetConfig {
@@ -46,14 +43,11 @@ export class WhiteboardWidget extends BaseWidget {
         }
     }
 
-    // 🟢 Fix 3: 安全获取插件实例 (不使用私有 API)
+    // 🟢 Fix 3: 安全获取插件实例
     private getPluginInstance(): BrainCorePlugin {
-        // 核心逻辑：直接访问主类的静态实例
         if (BrainCorePlugin.instance) {
             return BrainCorePlugin.instance;
         }
-
-        // 如果静态实例不存在，说明插件未正确加载，抛出错误
         console.error("[BrainCore] Plugin instance is missing.");
         throw new Error("BrainCore plugin not loaded");
     }
@@ -64,8 +58,7 @@ export class WhiteboardWidget extends BaseWidget {
         try {
             this.plugin = this.getPluginInstance();
         } catch (e) {
-            // 插件未加载时优雅退出
-            return;
+            return; // 插件未加载时优雅退出
         }
 
         // 初始化文件管理器
@@ -93,8 +86,7 @@ export class WhiteboardWidget extends BaseWidget {
             // 启动 React
             if (!this.root) this.root = createRoot(this.container);
 
-            // 渲染 (refreshReact 是 async，但在 render 结尾可以不 await，或者用 void)
-            // 这里我们选择 await 保证渲染顺序
+            // 渲染
             await this.refreshReact(boards);
 
         } catch (error) {
@@ -143,10 +135,8 @@ export class WhiteboardWidget extends BaseWidget {
                     settings={this.plugin.settings}
                     plugin={this.plugin}
 
-                    // 回调：保存
+                    // 回调：保存 (fire-and-forget)
                     onSave={(newData) => {
-                        // 🟢 Fix 4: 同步回调中调用 async 方法，不需要 await，也不需要 void，
-                        // 因为 saveBoard 通常是 fire-and-forget，但为了保险起见建议加上 catch
                         this.manager?.saveBoard(this.currentBoardName, newData).catch(err => {
                             console.error("Auto-save failed:", err);
                         });
@@ -154,7 +144,6 @@ export class WhiteboardWidget extends BaseWidget {
 
                     // 回调：切换白板
                     onSwitchBoard={(newName) => {
-                        // 🟢 Fix 5: 使用 void 显式标记忽略 Promise
                         void (async () => {
                             try {
                                 this.currentBoardName = newName;
@@ -170,12 +159,12 @@ export class WhiteboardWidget extends BaseWidget {
 
                     // 回调：新建白板
                     onCreateBoard={(newName) => {
-                        // 🟢 Fix 6: 使用 void 显式标记
                         void (async () => {
                             try {
                                 const success = await this.manager?.createBoard(newName);
                                 if (success) {
-                                    new Notice(`✅ Created: ${newName}`);
+                                    // 🟢 Fix: UI Text Consistency (Removed colon, added quotes)
+                                    new Notice(`✅ Created "${newName}"`);
                                     this.currentBoardName = newName;
 
                                     const latestBoards = await this.manager?.listBoards() || [];
@@ -193,13 +182,13 @@ export class WhiteboardWidget extends BaseWidget {
 
                     // 回调：删除白板
                     onDeleteBoard={(name) => {
-                        // 🟢 Fix 7: 使用 void 显式标记
                         void (async () => {
                             try {
                                 const success = await this.manager?.deleteBoard(name);
 
                                 if (success) {
-                                    new Notice(`🗑️ Deleted: ${name}`);
+                                    new Notice(`🗑️ Deleted "${name}"`);
+
                                     const latestBoards = await this.manager?.listBoards() || [];
 
                                     // 如果删除的是当前板，切换到其他板

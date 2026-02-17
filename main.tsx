@@ -1,4 +1,13 @@
-import { Plugin, MarkdownView, setIcon, debounce, Notice, type WorkspaceLeaf } from 'obsidian';
+import {
+    Plugin,
+    MarkdownView,
+    setIcon,
+    debounce,
+    Notice,
+    WorkspaceLeaf,
+    TFile,
+    Platform
+} from 'obsidian';
 import { BrainCoreSettings, DEFAULT_SETTINGS, BrainCoreSettingTab } from './settings';
 import { ReactHost } from './src/views/react-host';
 import { CODE_BLOCK_TAG } from './src/notes/constants';
@@ -8,6 +17,7 @@ import './src/notes/index';
 export default class BrainCorePlugin extends Plugin {
     settings: BrainCoreSettings;
     public static instance: BrainCorePlugin;
+    // 使用 WeakMap 防止内存泄漏，键为 View，值为按钮元素
     private widthToggleBtns: WeakMap<MarkdownView, HTMLElement> = new WeakMap();
 
     async onload() {
@@ -39,7 +49,6 @@ export default class BrainCorePlugin extends Plugin {
         this.addCommand({
             id: 'open-welcome-page',
             name: 'Open welcome page',
-            // 🟢 Fix: Mark async function as ignored with 'void'
             callback: () => { void this.activateWelcomeView(); }
         });
 
@@ -52,33 +61,28 @@ export default class BrainCorePlugin extends Plugin {
         });
 
         // ============================================================
-        // ⭐ 优化全宽检测事件监听 (修复版)
+        // ⭐ 优化全宽检测事件监听
         // ============================================================
-        // 这里的 debounce 第三个参数改为 false，防止首次立即执行拿到错误状态
-        const debouncedCheck = debounce(this.checkPageWidth.bind(this), 100, false);
+        // debounce 防止频繁触发
+        const debouncedCheck = debounce(this.checkPageWidth.bind(this), 100, true);
 
         // 1. 切换标签页时检测
         this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
-            // 🟢 Fix: debounced function returns a Promise here because checkPageWidth is async
             if (leaf) void debouncedCheck(leaf);
         }));
 
         // 2. 布局变化时检测
         this.registerEvent(this.app.workspace.on('layout-change', () => {
-            // ⭐ 关键修复：只获取当前活动的 Markdown 视图，绝对不让它自动创建新 Tab
             const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView)?.leaf;
             if (activeLeaf) {
-                // 🟢 Fix: Mark as void
                 void debouncedCheck(activeLeaf);
             }
         }));
 
-        // 3. ⭐ 关键：当 YAML (Frontmatter) 发生变化时，立即重新检测并更新样式
+        // 3. 监听元数据变化 (Frontmatter 修改会触发此事件)
         this.registerEvent(this.app.metadataCache.on('changed', (file) => {
             const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-            // 确保文件匹配且视图存在
             if (activeView && activeView.file === file) {
-                // 🟢 Fix: Mark as void
                 void debouncedCheck(activeView.leaf);
             }
         }));
@@ -86,16 +90,11 @@ export default class BrainCorePlugin extends Plugin {
 
     async activateWelcomeView() {
         const { workspace } = this.app;
-
-        // 先检查是否已经存在欢迎页
         const leaves = workspace.getLeavesOfType(WELCOME_VIEW_TYPE);
 
         if (leaves.length > 0) {
-            // 如果存在，直接激活第一个
             workspace.revealLeaf(leaves[0]);
         } else {
-            // 如果不存在，在一个新标签页中打开
-            // getLeaf('tab') 是安全的 API，明确用于打开新标签页
             const leaf = workspace.getLeaf('tab');
             await leaf.setViewState({ type: WELCOME_VIEW_TYPE, active: true });
             workspace.revealLeaf(leaf);
@@ -103,84 +102,109 @@ export default class BrainCorePlugin extends Plugin {
     }
 
     onunload() {
-        // 清理逻辑 (通常不需要手动清理 View，Obsidian 会处理)
+        // 插件卸载时，Obsidian 会自动清理通过 registerEvent 注册的事件
+        // 但如果修改了 DOM 样式 (如 addClass)，最好在这里移除，虽非强制但推荐
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            if (leaf.view instanceof MarkdownView && leaf.view.containerEl) {
+                leaf.view.containerEl.removeClass('brain-core-full-width');
+            }
+        });
     }
 
     // ============================================================
-    // ⭐ 全宽模式核心逻辑 (YAML 持久化版)
+    // ⭐ 全宽模式核心逻辑 (修复与优化版)
     // ============================================================
 
     async checkPageWidth(leaf: WorkspaceLeaf | null) {
-        // 1. 基础校验：必须是 MarkdownView
+        // 1. 基础校验：必须是 MarkdownView 且有文件
         if (!leaf || !(leaf.view instanceof MarkdownView)) return;
+
         const view = leaf.view;
         const file = view.file;
-        if (!file) return;
+        if (!file || !(file instanceof TFile)) return;
 
-        // 2. 读取 YAML 缓存
+        // 2. 性能优化：先通过 MetadataCache 预判
         const cache = this.app.metadataCache.getFileCache(file);
-        const frontmatter = cache?.frontmatter;
 
-        // 3. 检测逻辑
-        // 检测内容中是否有 sticky-note 代码块
+        // 如果 Cache 中连 'code' 类型的 section 都没有，那肯定没有便利贴，直接跳过耗时的读取
+        const hasCodeSection = cache?.sections?.some(sec => sec.type === 'code');
+
         let hasStickyNote = false;
-        try {
-            const content = await this.app.vault.cachedRead(file);
-            hasStickyNote = content.includes(`\`\`\`${CODE_BLOCK_TAG}`);
-        } catch { // <--- Look, no (e)!
-            hasStickyNote = false;
+
+        // 只有当存在代码块时，才读取文件内容进行精确匹配
+        if (hasCodeSection) {
+            try {
+                const content = await this.app.vault.cachedRead(file);
+                // 严格匹配代码块标记
+                hasStickyNote = content.includes(`\`\`\`${CODE_BLOCK_TAG}`);
+            } catch (e) {
+                console.warn('BrainCore: Failed to read file content', e);
+                hasStickyNote = false;
+            }
         }
 
+        // 3. 读取 Frontmatter 配置
+        const frontmatter = cache?.frontmatter;
         // 检测用户是否强制设置了标准宽 (bc-width: standard)
         const userForceStandard = frontmatter && frontmatter['bc-width'] === 'standard';
 
+        // 获取或创建按钮
         let btn = this.widthToggleBtns.get(view);
 
         // 4. 样式应用逻辑
-        // 情况 A: 有便利贴 且 用户没强制设为标准宽 -> 全宽
-        if (hasStickyNote && !userForceStandard) {
+        const shouldBeFullWidth = hasStickyNote && !userForceStandard;
+
+        if (shouldBeFullWidth) {
+            // ---> 应用全宽
             if (!view.containerEl.classList.contains('brain-core-full-width')) {
                 view.containerEl.addClass('brain-core-full-width');
             }
 
-            // 显示按钮
+            // 确保按钮存在
             if (!btn) btn = this.createToggleBtn(view);
+
+            // 显示按钮并更新图标
             if (btn) {
-                // 🟢 修复：使用 setCssProps 清除 display 属性 (恢复默认显示)
-                btn.setCssProps({ 'display': '' });
+                // 🟢 修复：用原生 DOM 操作替代 setCssProps
+                btn.style.display = '';
                 this.updateIconState(btn, true);
             }
 
-        }
-        // 情况 B: ...
-        else if (hasStickyNote && userForceStandard) {
+        } else {
+            // ---> 恢复标准宽 (两种情况：没有便利贴，或者用户强制标准宽)
             view.containerEl.removeClass('brain-core-full-width');
 
-            // 显示按钮
-            if (!btn) btn = this.createToggleBtn(view);
-            if (btn) {
-                // 🟢 修复：使用 setCssProps
-                btn.setCssProps({ 'display': '' });
-                this.updateIconState(btn, false);
-            }
-        }
-        // 情况 C: ...
-        else {
-            view.containerEl.removeClass('brain-core-full-width');
-            if (btn) {
-                // 🟢 修复：使用 setCssProps 隐藏
-                btn.setCssProps({ 'display': 'none' });
+            if (hasStickyNote && userForceStandard) {
+                // 情况 B: 有便利贴但用户强制缩小 -> 移除全宽样式，但保留按钮让用户能切回去
+                if (!btn) btn = this.createToggleBtn(view);
+                if (btn) {
+                    btn.style.display = '';
+                    this.updateIconState(btn, false);
+                }
+            } else {
+                // 情况 C: 根本没有便利贴 -> 移除样式，隐藏按钮
+                if (btn) {
+                    btn.style.display = 'none';
+                }
             }
         }
     }
 
     // 辅助：创建按钮
-    createToggleBtn(view: MarkdownView) {
-        // addAction 有时可能返回 undefined (极少数情况)
-        // 🟢 Fix: toggleWidth is async, wrapped in void inside the callback
-        const btn = view.addAction('minimize', '切换全宽', () => { void this.toggleWidth(view); });
+    createToggleBtn(view: MarkdownView): HTMLElement | undefined {
+        // 只有在按钮不存在时才创建
+        if (this.widthToggleBtns.has(view)) {
+            return this.widthToggleBtns.get(view);
+        }
+
+        const btn = view.addAction('minimize', '切换全宽', () => {
+            void this.toggleWidth(view);
+        });
+
         if (btn) {
             this.widthToggleBtns.set(view, btn);
+            // 默认先隐藏，由 checkPageWidth 决定显示
+            btn.style.display = 'none';
         }
         return btn;
     }
@@ -188,7 +212,7 @@ export default class BrainCorePlugin extends Plugin {
     // ⭐ 核心交互：写入 YAML
     async toggleWidth(view: MarkdownView) {
         const file = view.file;
-        if (!file) return;
+        if (!file || !(file instanceof TFile)) return;
 
         const isCurrentlyFull = view.containerEl.classList.contains('brain-core-full-width');
 
@@ -203,10 +227,10 @@ export default class BrainCorePlugin extends Plugin {
                     delete frontmatter['bc-width'];
                 }
             });
-            // 修改 Frontmatter 后，this.app.metadataCache.on('changed') 会触发 checkPageWidth
+            // 注意：修改 Frontmatter 后，this.app.metadataCache.on('changed') 会自动触发 checkPageWidth
         } catch (error) {
-            console.error('Failed to toggle width via frontmatter:', error);
-            new Notice('无法更新文件属性，请检查控制台。');
+            console.error('BrainCore: Failed to toggle width via frontmatter:', error);
+            new Notice('BrainCore: 无法更新文件属性。');
         }
     }
 

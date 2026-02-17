@@ -85,6 +85,7 @@ const WhiteboardContainer: React.FC<{
             });
         } catch (error) {
             console.error("Load Failed:", error);
+            // 🟢 Fix: Sentence case
             new Notice("Load failed");
         }
     };
@@ -97,6 +98,7 @@ const WhiteboardContainer: React.FC<{
     const handleDeleteBoard = (nameToDelete: string) => {
         // Prevent deleting the last remaining board
         if (fileList.length <= 1) {
+            // 🟢 Fix: Sentence case
             new Notice("Cannot delete: at least one whiteboard is required.");
             return;
         }
@@ -104,16 +106,17 @@ const WhiteboardContainer: React.FC<{
         // Invoke Obsidian-style confirmation modal
         new ConfirmModal(
             app,
+            // 🟢 Fix: Sentence case
             'Delete board',
             `Are you sure you want to delete "${nameToDelete}"? This action cannot be undone.`,
             () => {
-                // 🟢 修复 1: 添加 void
-                // Trigger an internal asynchronous closure
+                // 🟢 Fix: Explicit void for async closure
                 void (async () => {
                     try {
                         const success = await managerRef.current?.deleteBoard(nameToDelete);
                         if (success) {
-                            new Notice(`🗑️ Deleted: ${nameToDelete}`);
+                            // 🟢 Fix: Sentence case & formatting
+                            new Notice(`🗑️ Deleted "${nameToDelete}"`);
 
                             // Switch to the first board in the list
                             const newList = await managerRef.current?.listBoards();
@@ -122,10 +125,12 @@ const WhiteboardContainer: React.FC<{
                             setCurrentName(nextBoard);
                             await updateMarkdownCodeBlock(nextBoard);
                         } else {
+                            // 🟢 Fix: Sentence case
                             new Notice("❌ Delete failed");
                         }
                     } catch (error) {
                         console.error("Delete operation failed", error);
+                        // 🟢 Fix: Sentence case
                         new Notice("❌ An error occurred. Please check the console.");
                     }
                 })();
@@ -146,8 +151,10 @@ const WhiteboardContainer: React.FC<{
             currentFile={currentName}
 
             onSave={(newData) => {
-                managerRef.current?.saveBoard(currentName, newData);
+                // 🟢 Fix: Added 'void' operator to handle the async Promise
+                void managerRef.current?.saveBoard(currentName, newData);
             }}
+
             onSwitchBoard={(newName) => {
                 setCurrentName(newName);
                 void updateMarkdownCodeBlock(newName).catch(err => {
@@ -156,20 +163,23 @@ const WhiteboardContainer: React.FC<{
             }}
 
             onCreateBoard={(newName) => {
-                // 🟢 修复 2: 添加 void
+                // 🟢 Fix: Explicit void for async closure
                 void (async () => {
                     try {
                         const success = await managerRef.current?.createBoard(newName);
 
                         if (success) {
-                            new Notice(`✅ Created: ${newName}`);
+                            // 🟢 Fix: Sentence case & formatting
+                            new Notice(`✅ Created "${newName}"`);
                             setCurrentName(newName);
                             await updateMarkdownCodeBlock(newName);
                         } else {
+                            // 🟢 Fix: Sentence case
                             new Notice(`⚠️ Failed to create "${newName}". It might already exist.`);
                         }
                     } catch (error) {
                         console.error("Error creating board:", error);
+                        // 🟢 Fix: Sentence case
                         new Notice("❌ Error: could not create board. Check console for details.");
                     }
                 })();
@@ -181,7 +191,7 @@ const WhiteboardContainer: React.FC<{
 };
 
 // ============================================================
-// 2. Main Dashboard Component (No changes needed here)
+// 2. Main Dashboard Component
 // ============================================================
 export const Dashboard: React.FC<DashboardProps> = ({
     app,
@@ -250,6 +260,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div
                 className={`brain-core-resize-handle ${isDragging ? 'is-dragging' : ''}`}
                 onPointerDown={handleResizeStart}
+                // 🟢 Fix: Sentence case
                 title="Drag to resize height"
                 style={{
                     position: 'absolute',

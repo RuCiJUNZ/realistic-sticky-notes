@@ -1,5 +1,12 @@
 // src/notes/WhiteboardFileManager.ts
-import { App, normalizePath, Notice, TFile, TFolder, type CachedMetadata } from 'obsidian';
+import {
+    App,
+    normalizePath,
+    Notice,
+    TFile,
+    TFolder,
+    type CachedMetadata
+} from 'obsidian';
 import { StickyNoteData, BoardConfig, WhiteboardData } from '../types';
 import StickyNotesPlugin from '../../../main';
 import { BoardConfigManager } from './BoardConfigManager';
@@ -22,7 +29,7 @@ export class WhiteboardFileManager {
         return normalizePath(this.plugin.settings.basePath || 'StickyNotes');
     }
 
-    // 🟢 优化：使用 Vault API 替代 Adapter API
+    // 1. 基础文件夹检查
     async ensureBaseFolder() {
         const path = this.getBasePath();
         const folder = this.app.vault.getAbstractFileByPath(path);
@@ -31,6 +38,7 @@ export class WhiteboardFileManager {
         }
     }
 
+    // 2. 获取白板列表
     async listBoards(): Promise<string[]> {
         await this.ensureBaseFolder();
         const basePath = this.getBasePath();
@@ -48,6 +56,7 @@ export class WhiteboardFileManager {
         return boards;
     }
 
+    // 3. 创建新白板
     async createBoard(name: string): Promise<boolean> {
         await this.ensureBaseFolder();
         // 简单的文件名清洗
@@ -56,7 +65,6 @@ export class WhiteboardFileManager {
 
         const existingFolder = this.app.vault.getAbstractFileByPath(folderPath);
         if (existingFolder) {
-            // 🟢 修复：英文提示
             new Notice(`Board "${safeName}" already exists.`);
             return false;
         }
@@ -72,6 +80,7 @@ export class WhiteboardFileManager {
         }
     }
 
+    // 4. 删除白板
     async deleteBoard(boardName: string): Promise<boolean> {
         const folderPath = normalizePath(`${this.getBasePath()}/${boardName}`);
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
@@ -83,15 +92,12 @@ export class WhiteboardFileManager {
             return true;
         } catch (error) {
             console.error(`Failed to delete board: ${boardName}`, error);
-            // 🟢 修复：英文提示
             new Notice("Failed to delete board.");
             return false;
         }
     }
 
-    /**
-     * 🚀 优化：并行加载
-     */
+    // 5. 加载白板数据 (包含配置和所有笔记)
     async loadBoard(boardName: string): Promise<{ config: BoardConfig, notes: StickyNoteData[] }> {
         const folderPath = normalizePath(`${this.getBasePath()}/${boardName}`);
         const config = this.configManager.getConfig(folderPath);
@@ -114,17 +120,16 @@ export class WhiteboardFileManager {
         return { config, notes };
     }
 
+    // 6. 迁移检查
     async checkAndMigrate() {
         await this.migrationManager.checkAndMigrate(this.getBasePath(), this);
     }
 
-    /**
-     * 🚀 优化：并发控制 + 脏数据清理
-     */
+    // 7. 保存白板 (核心逻辑：保存配置 + 批量保存笔记 + 清理孤儿文件)
     async saveBoard(boardName: string, data: WhiteboardData) {
         const folderPath = normalizePath(`${this.getBasePath()}/${boardName}`);
 
-        // 1. 保存配置
+        // 7.1 保存配置
         await this.configManager.updateConfig(folderPath, {
             wallStyle: data.wallStyle,
             isFullWidth: data.isFullWidth
@@ -142,7 +147,7 @@ export class WhiteboardFileManager {
 
         const activeFilePaths = new Set<string>();
 
-        // 2. 并行保存所有笔记 (分批次处理)
+        // 7.2 并行保存所有笔记 (分批次处理以防止 I/O 拥堵)
         const notes = data.notes;
         const CHUNK_SIZE = 50;
 
@@ -159,7 +164,7 @@ export class WhiteboardFileManager {
             await Promise.all(chunkPromises);
         }
 
-        // 3. 清理孤儿文件 (UI上已经删除，但本地文件还在的)
+        // 7.3 清理孤儿文件 (内存中已删除，但本地文件还在的)
         const deletePromises: Promise<void>[] = [];
 
         for (const existingPath of existingFilesMap) {
@@ -167,7 +172,7 @@ export class WhiteboardFileManager {
                 const file = this.app.vault.getAbstractFileByPath(existingPath);
 
                 if (file instanceof TFile) {
-                    // 安全检查：只删除确实是 sticky-note 类型的文件，防止误删用户存放的其他文件
+                    // 安全检查：只删除确实是 sticky-note 类型的文件
                     const cache = this.app.metadataCache.getFileCache(file);
 
                     if (cache?.frontmatter?.type === 'sticky-note') {
@@ -190,6 +195,7 @@ export class WhiteboardFileManager {
         }
     }
 
+    // 8. 解析单个笔记文件
     private async parseNoteFile(file: TFile): Promise<StickyNoteData | null> {
         // 优先读取缓存的元数据
         const cache = this.app.metadataCache.getFileCache(file);
@@ -223,68 +229,59 @@ export class WhiteboardFileManager {
     }
 
     /**
-     * 🚀 核心优化：Cache-First Dirty Check
+     * 9. 🚀 核心修复：保存单个笔记
+     * 修复了 'TFile is error type' 问题，移除了 targetFile 变量声明
      */
     async saveNote(boardName: string, note: StickyNoteData): Promise<string | null> {
         const folderPath = normalizePath(`${this.getBasePath()}/${boardName}`);
 
-        // 🟢 优化：使用 getAbstractFileByPath 检查文件夹
-        const folder = this.app.vault.getAbstractFileByPath(folderPath);
-        if (!folder) {
+        // 确保文件夹存在
+        if (!this.app.vault.getAbstractFileByPath(folderPath)) {
             await this.app.vault.createFolder(folderPath);
         }
 
-        // 确定文件路径
-        let filePath = note.filepath;
-        let file: TFile | null = null;
-        let isNewFile = false;
-
-        let abstractFile = filePath ? this.app.vault.getAbstractFileByPath(filePath) : null;
-
-        if (!filePath || !(abstractFile instanceof TFile)) {
-            // 这种情况通常是新创建的笔记，或者文件名丢失
-            const fileName = `Note ${note.id}.md`;
-            filePath = normalizePath(`${folderPath}/${fileName}`);
-
-            const generatedAbstractFile = this.app.vault.getAbstractFileByPath(filePath);
-
-            if (generatedAbstractFile instanceof TFile) {
-                file = generatedAbstractFile;
-                isNewFile = false;
-            } else {
-                isNewFile = true;
-            }
-        } else {
-            file = abstractFile;
-            isNewFile = false;
-        }
-
-        // 构建内容
         const newFileContent = this.constructFileContent(note);
 
-        try {
-            if (isNewFile) {
-                const createdFile = await this.app.vault.create(filePath, newFileContent);
-                note.filepath = createdFile.path;
-                return createdFile.path;
-            } else if (file) {
-                // 🔥 性能优化
-                const cache = this.app.metadataCache.getFileCache(file);
-                const isMetadataDirty = this.hasMetadataChanged(cache, note);
+        // 确定目标文件路径
+        let targetPath = note.filepath;
 
-                if (isMetadataDirty) {
-                    // 如果元数据变了，直接覆盖 (Overwrite)
-                    await this.app.vault.modify(file, newFileContent);
+        // 如果没有路径，或者路径对应的文件不存在（可能是改名导致的），则生成标准新路径
+        if (!targetPath || !this.app.vault.getAbstractFileByPath(targetPath)) {
+            targetPath = normalizePath(`${folderPath}/Note ${note.id}.md`);
+        }
+
+        // 获取路径对应的抽象文件对象
+        const abstractFile = this.app.vault.getAbstractFileByPath(targetPath);
+
+        try {
+            // 情况 A: 文件已存在 (Update) -> 使用 instanceof 收窄类型
+            if (abstractFile instanceof TFile) {
+                const cache = this.app.metadataCache.getFileCache(abstractFile);
+
+                // 仅当元数据变更或内容不一致时才写入 (性能优化)
+                if (this.hasMetadataChanged(cache, note)) {
+                    await this.app.vault.modify(abstractFile, newFileContent);
                 } else {
-                    // 如果元数据没变，才去读取全文对比正文
-                    const currentContent = await this.app.vault.read(file);
+                    const currentContent = await this.app.vault.read(abstractFile);
                     if (currentContent !== newFileContent) {
-                        await this.app.vault.modify(file, newFileContent);
+                        await this.app.vault.modify(abstractFile, newFileContent);
                     }
                 }
 
-                note.filepath = file.path;
-                return file.path;
+                note.filepath = abstractFile.path;
+                return abstractFile.path;
+            }
+            // 情况 B: 文件不存在 (Create)
+            else {
+                // 如果路径被占用但不是文件 (例如同名文件夹)，防止报错
+                if (abstractFile) {
+                    console.error(`Cannot create note at ${targetPath}: path is occupied.`);
+                    return null;
+                }
+
+                const createdFile = await this.app.vault.create(targetPath, newFileContent);
+                note.filepath = createdFile.path;
+                return createdFile.path;
             }
         } catch (error) {
             console.error(`Failed to save note ${note.id}:`, error);
@@ -293,30 +290,17 @@ export class WhiteboardFileManager {
         return null;
     }
 
-    /**
-       * 辅助方法：检查 Note 数据与缓存是否不一致
-       * @param cache - 从 import type { CachedMetadata } 导入
-       * @param note - 笔记数据
-       */
+    // 10. 辅助：检查脏数据
     private hasMetadataChanged(cache: CachedMetadata | null, note: StickyNoteData): boolean {
-        // 1. 无缓存或无 frontmatter，视为脏数据，必须更新
         if (!cache || !cache.frontmatter) return true;
-
         const fm = cache.frontmatter;
 
-        // ⚠️ 注意：constructFileContent 中使用了 Math.round，这里对比也必须对齐
-
-        // 🟢 优化：ID 对比转为 String，防止 YAML 解析将数字 ID 读为 number 导致不匹配
+        // 字符串化对比 ID，防止类型不匹配
         if (String(fm.id) !== String(note.id)) return true;
 
-        // 坐标对比 (取整)
         if (fm.x !== Math.round(note.x)) return true;
         if (fm.y !== Math.round(note.y)) return true;
-
-        // Rotation 对比
         if (fm.rotation !== note.rotation) return true;
-
-        // 其他属性对比
         if (fm.color !== note.color) return true;
         if (fm.size !== note.size) return true;
         if (fm.shape !== note.shape) return true;
@@ -327,13 +311,10 @@ export class WhiteboardFileManager {
 
         return false;
     }
-    /**
-     * 辅助方法：手动构建 Frontmatter
-     */
-    private constructFileContent(note: StickyNoteData): string {
-        // 简单转义引号，防止 YAML 格式破裂
-        const safeId = String(note.id).replace(/"/g, '\\"');
 
+    // 11. 辅助：构建文件内容
+    private constructFileContent(note: StickyNoteData): string {
+        const safeId = String(note.id).replace(/"/g, '\\"');
         const fm = [
             '---',
             `type: sticky-note`,

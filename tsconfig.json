@@ -1,44 +1,33 @@
 {
   "compilerOptions": {
-    /* 1. 基础编译选项 */
+    /* 1. 基础输出设置 */
     "baseUrl": ".",
-    "module": "ESNext", /* 交给 esbuild 处理模块打包 */
-    "target": "ES2018", /* Obsidian 运行在较新的 Electron 上，ES2018 是安全的 */
-    "allowJs": true, /* 允许混合使用 .js 文件 */
-    "sourceMap": false, /* 由 esbuild 生成 sourcemap，这里关闭以避免冲突 */
-    "inlineSourceMap": true, /* 开发模式下内联 SourceMap，方便调试 */
+    "module": "ESNext",
+    "target": "ES2020", /* 🟢 建议升级到 ES2020，Obsidian 的环境完全支持，代码更简洁 */
+    "allowJs": true,
+    "sourceMap": true,
     "inlineSources": true,
-    /* 2. 模块解析 (解决 import 报错的关键) */
-    "moduleResolution": "node", /* 必须：按 Node.js 规则查找 node_modules */
-    "esModuleInterop": true, /* 关键：允许 import React from 'react' 这种写法 */
-    "allowSyntheticDefaultImports": true, /* 关键：允许没有默认导出的库使用默认导入 */
-    "skipLibCheck": true, /* 忽略 node_modules 里的类型定义错误，加快编译 */
-    /* 3. React 支持配置 */
-    "jsx": "react", /* 将 JSX 编译为 React.createElement Calls */
+    /* 2. 模块解析 */
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true, /* 🟢 建议开启：允许导入 json 文件 */
+    /* 3. React 支持 */
+    "jsx": "react-jsx", /* 🟢 强烈建议：React 17+ 使用此选项，不用在每个文件里 import React */
     /* 4. 类型检查严格度 */
-    "noImplicitAny": true, /* 禁止隐式的 any 类型 (建议开启) */
-    "strictNullChecks": true, /* 严格的空值检查 (Obsidian 插件推荐开启) */
-    "importHelpers": true, /* 减少打包体积 */
-    /* 5. 库定义 */
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "importHelpers": true,
+    /* 5. 核心库定义 */
     "lib": [
-      "DOM", /* 浏览器 DOM API */
-      "ES5",
-      "ES6",
-      "ES7",
-      "ES2015",
-      "ES2016",
-      "ES2017",
-      "ES2018",
-      "ES2019",
-      "ES2020" /* 现代 JS 语法支持 */
-    ],
-    /* 🟢 关键修改：把 "lodash" 加到这个列表里 */
-    "types": [
-      "node",
-      "react",
-      "react-dom",
-      "lodash"
+      "DOM",
+      "ESNext", /* 🟢 用 ESNext 直接包含所有新语法，不用写一长串 ES2015-2020 */
+      "DOM.Iterable"
     ]
+    /* 🔴 关键修改：彻底删除 "types" 字段 */
+    /* 不要在这里列出 ["node", "lodash", "react"]！ */
+    /* 删除后，TypeScript 会自动扫描 node_modules/@types 下的所有包 */
   },
   "include": [
     "**/*.ts",
