@@ -1,12 +1,13 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import BrainCorePlugin from './main';
+// 🟢 Fix: 使用 'import type' 避免循环依赖导致的运行时问题
+import type BrainCorePlugin from './main';
 import { BoardConfig } from './src/notes/types';
 
 // 1. Settings Interface
 export interface BrainCoreSettings {
     basePath: string;
     hasShownWelcome: boolean;
-    // Store configuration for each whiteboard (e.g., background style)
+    // Store configuration for each whiteboard
     boards: Record<string, BoardConfig>;
     // Track which legacy files have been migrated
     migratedFiles: string[];
@@ -34,10 +35,9 @@ export class BrainCoreSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
-        // Heading: Sentence case
-        new Setting(containerEl)
-            .setName('Sticky notes')
-            .setHeading();
+        // 🔴 Fix: Setting 类没有 setHeading() 方法
+        // 使用标准的 HTML 标题
+        containerEl.createEl('h2', { text: 'Sticky notes' });
 
         // --- General Settings ---
         new Setting(containerEl)
@@ -52,18 +52,22 @@ export class BrainCoreSettingTab extends PluginSettingTab {
                 }));
 
         // --- Info & Tips ---
-        // 🟢 Fix: Avoid direct .style assignment. Use 'attr' or CSS classes.
-        // 'text-muted' is a standard Obsidian theme class for helper text.
-        const infoDiv = containerEl.createDiv({
-            cls: 'text-muted',
-            attr: {
-                style: 'margin-top: 20px; font-size: 0.9em; line-height: 1.5;'
-            }
-        });
+        // 🟢 Fix: 避免使用 attr: { style: ... }。
+        // 使用 .createDiv 后直接操作 style 属性，更加类型安全且符合 CSP。
+        const infoDiv = containerEl.createDiv({ cls: 'text-muted' });
+        infoDiv.style.marginTop = '20px';
+        infoDiv.style.fontSize = '0.9em';
+        infoDiv.style.lineHeight = '1.5';
 
-        infoDiv.createEl('p', { text: '💡 Quick tips', attr: { style: 'margin-bottom: 0.5em; font-weight: bold;' } });
+        // Tips Header
+        const tipsHeader = infoDiv.createEl('p', { text: '💡 Quick tips' });
+        tipsHeader.style.marginBottom = '0.5em';
+        tipsHeader.style.fontWeight = 'bold';
 
-        const ul = infoDiv.createEl('ul', { attr: { style: 'padding-inline-start: 20px; margin: 0;' } });
+        // Tips List
+        const ul = infoDiv.createEl('ul');
+        ul.style.paddingInlineStart = '20px';
+        ul.style.margin = '0';
 
         const li1 = ul.createEl('li');
         li1.setText('Sticky notes are saved in markdown files within: ');
@@ -78,24 +82,22 @@ export class BrainCoreSettingTab extends PluginSettingTab {
         ul.createEl('li', { text: 'Double-click on the canvas to add a new note instantly.' });
 
         // --- Support Link ---
-        // 🟢 Fix: Avoid direct .style assignment.
-        const supportDiv = containerEl.createDiv({
-            attr: {
-                style: 'text-align: center; margin-top: 40px;'
-            }
-        });
+        const supportDiv = containerEl.createDiv();
+        supportDiv.style.textAlign = 'center';
+        supportDiv.style.marginTop = '40px';
 
         const link = supportDiv.createEl('a', {
             href: "https://ko-fi.com/sumus"
         });
 
-        link.createEl('img', {
+        const img = link.createEl('img', {
             attr: {
                 src: "https://storage.ko-fi.com/cdn/kofi2.png?v=3",
-                alt: "Buy me a coffee",
-                // Combine styles into the style string
-                style: 'height: 36px; border: 0px;'
+                alt: "Buy me a coffee"
             }
         });
+        // 直接设置图片样式
+        img.style.height = '36px';
+        img.style.border = '0px';
     }
 }

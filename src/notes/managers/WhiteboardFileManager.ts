@@ -3,11 +3,14 @@ import {
     normalizePath,
     Notice,
     TFile,
-    TFolder,
-    type CachedMetadata
+    TFolder
 } from 'obsidian';
+// 🟢 Fix: 单独导入类型，解决 "error type" 问题
+import type { CachedMetadata } from 'obsidian';
+
 import { StickyNoteData, BoardConfig, WhiteboardData } from '../types';
-import BrainCorePlugin from '../../../main';
+// 🟢 Fix: 使用 import type 避免循环引用（如果 main.ts 也引用了这个文件）
+import type BrainCorePlugin from '../../../main';
 import { BoardConfigManager } from './BoardConfigManager';
 import { LegacyMigrationManager } from './LegacyMigrationManager';
 

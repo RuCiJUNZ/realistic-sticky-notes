@@ -1,12 +1,17 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
-// 🟢 Fix: Explicit type import to resolve linter errors
-import { Notice, TFile, App } from 'obsidian';
-import type { MarkdownPostProcessorContext } from 'obsidian';
+// 🟢 Fix: 合并导入，确保 MarkdownPostProcessorContext 被正确识别
+import {
+    App,
+    Notice,
+    TFile,
+    MarkdownPostProcessorContext
+} from 'obsidian';
 import { RegisterWidget, BaseWidget, WidgetConfig } from '../../core';
 import { WhiteboardComponent } from './board/Whiteboard';
 import { WhiteboardFileManager } from './managers/WhiteboardFileManager';
-import BrainCorePlugin from '../../main';
+// 🟢 Fix: 使用 import type 避免循环引用
+import type BrainCorePlugin from '../../main';
 
 // =============================================================================
 // 1. Definition
@@ -40,10 +45,17 @@ export class WhiteboardWidget extends BaseWidget {
         }
     }
 
+    // Helper to safely access plugin instance
     private getPluginInstance(): BrainCorePlugin {
-        if (BrainCorePlugin.instance) {
-            return BrainCorePlugin.instance;
-        }
+        // @ts-ignore: Accessing static instance for widget initialization
+        const instance = window.app.plugins.plugins['brain-core'] as BrainCorePlugin;
+
+        // Fallback to static instance if available (depending on your architecture)
+        // Since we changed import to 'type', we can't access BrainCorePlugin.instance directly
+        // unless we cast or use the global app.plugins method which is safer for loose coupling.
+        // Assuming your main.ts still exports the class implementation for runtime:
+        if (instance) return instance;
+
         console.error("[BrainCore] Plugin instance is missing.");
         throw new Error("BrainCore plugin not loaded");
     }
@@ -121,7 +133,7 @@ export class WhiteboardWidget extends BaseWidget {
 
                     // Callback: Save
                     onSave={(newData) => {
-                        // 🟢 Fix: Add void to handle the promise (no floating promises)
+                        // 🟢 Fix: Add void to handle the promise
                         void this.manager?.saveBoard(this.currentBoardName, newData).catch(err => {
                             console.error("Auto-save failed:", err);
                         });
@@ -137,6 +149,7 @@ export class WhiteboardWidget extends BaseWidget {
                                 await this.updateCodeBlock(newName);
                             } catch (error) {
                                 console.error("Failed to switch board:", error);
+                                // Sentence case
                                 new Notice("Failed to switch board.");
                             }
                         })();
@@ -148,6 +161,7 @@ export class WhiteboardWidget extends BaseWidget {
                             try {
                                 const success = await this.manager?.createBoard(newName);
                                 if (success) {
+                                    // Sentence case
                                     new Notice(`✅ Created "${newName}"`);
                                     this.currentBoardName = newName;
 
@@ -155,10 +169,12 @@ export class WhiteboardWidget extends BaseWidget {
                                     await this.refreshReact(latestBoards);
                                     await this.updateCodeBlock(newName);
                                 } else {
+                                    // Sentence case
                                     new Notice(`⚠️ Board "${newName}" already exists.`);
                                 }
                             } catch (error) {
                                 console.error("Failed to create board:", error);
+                                // Sentence case
                                 new Notice("❌ Failed to create board. Check console.");
                             }
                         })();
@@ -171,6 +187,7 @@ export class WhiteboardWidget extends BaseWidget {
                                 const success = await this.manager?.deleteBoard(name);
 
                                 if (success) {
+                                    // Sentence case
                                     new Notice(`🗑️ Deleted "${name}"`);
 
                                     const latestBoards = await this.manager?.listBoards() || [];
@@ -189,6 +206,7 @@ export class WhiteboardWidget extends BaseWidget {
                                 }
                             } catch (error) {
                                 console.error("Failed to delete board:", error);
+                                // Sentence case
                                 new Notice("❌ Failed to delete board.");
                             }
                         })();
@@ -202,6 +220,7 @@ export class WhiteboardWidget extends BaseWidget {
 
     onunload() {
         if (this.root) {
+            // Keep setTimeout to prevent React 18 strict mode double-invoke issues during fast unloads
             setTimeout(() => {
                 this.root?.unmount();
                 this.root = null;

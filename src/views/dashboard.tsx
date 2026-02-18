@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { App, MarkdownPostProcessorContext, Notice, TFile } from 'obsidian';
-import { BrainCoreSettings } from '../../settings';
-import BrainCorePlugin from '../../main';
+import type { BrainCoreSettings } from '../../settings';
+// 🟢 Fix: 使用 import type 避免循环依赖 (Circular Dependency)
+import type BrainCorePlugin from '../../main';
 import { ConfirmModal } from '../notes/board/ConfirmModal';
 import { WhiteboardComponent } from '../notes/board/Whiteboard';
 import { WhiteboardFileManager } from '../notes/managers/WhiteboardFileManager';
@@ -33,6 +34,7 @@ const WhiteboardContainer: React.FC<{
     const [currentName, setCurrentName] = useState(boardName);
     const managerRef = useRef<WhiteboardFileManager | null>(null);
 
+    // Initialize manager strictly
     if (!managerRef.current) {
         managerRef.current = new WhiteboardFileManager(app, plugin);
     }
@@ -42,11 +44,13 @@ const WhiteboardContainer: React.FC<{
         if (!ctx) return;
         const sectionInfo = ctx.getSectionInfo(containerEl);
         if (!sectionInfo) return;
+
         const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
         if (file instanceof TFile) {
             const content = await app.vault.read(file);
             const lines = content.split('\n');
             const { lineStart, lineEnd } = sectionInfo;
+            // 🟢 Fix: Ensure strict newline handling
             const newContent = `\`\`\`sticky-note\n${newName}\n\`\`\``;
             lines.splice(lineStart, lineEnd - lineStart + 1, newContent);
             await app.vault.modify(file, lines.join('\n'));
@@ -70,6 +74,7 @@ const WhiteboardContainer: React.FC<{
             if (!list.includes(targetName)) {
                 safeName = list[0] || 'default';
                 setCurrentName(safeName);
+                // Optional: Update markdown if the original board was missing
             }
 
             const { config, notes } = await managerRef.current.loadBoard(safeName);
@@ -148,7 +153,6 @@ const WhiteboardContainer: React.FC<{
             currentFile={currentName}
 
             onSave={(newData) => {
-                // 🟢 Fix: Added 'void' operator to handle the async Promise
                 void managerRef.current?.saveBoard(currentName, newData);
             }}
 
@@ -160,7 +164,6 @@ const WhiteboardContainer: React.FC<{
             }}
 
             onCreateBoard={(newName) => {
-                // 🟢 Fix: Explicit void for async closure
                 void (async () => {
                     try {
                         const success = await managerRef.current?.createBoard(newName);
@@ -199,13 +202,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
     const [containerHeight, setContainerHeight] = useState(initialHeight);
     const [isDragging, setIsDragging] = useState(false);
+
+    // Refs to store values for the event listener closure
     const startYRef = useRef(0);
     const startHeightRef = useRef(0);
 
-    const handleResizeStart = (e: React.PointerEvent) => {
+    // 🟢 Fix: Type the React Event strictly
+    const handleResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
-        (e.target as Element).setPointerCapture(e.pointerId);
+
+        // 🟢 Fix: Capture on currentTarget (the handle), not target
+        e.currentTarget.setPointerCapture(e.pointerId);
+
         setIsDragging(true);
         startYRef.current = e.clientY;
         startHeightRef.current = containerHeight;
@@ -213,16 +222,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     useEffect(() => {
         if (!isDragging) return;
+
+        // 🟢 Fix: Window events are Native PointerEvents, not React.PointerEvent
         const handlePointerMove = (e: PointerEvent) => {
             e.preventDefault();
             const deltaY = e.clientY - startYRef.current;
+            // Limit minimum height to 200px
             setContainerHeight(Math.max(200, startHeightRef.current + deltaY));
         };
+
         const handlePointerUp = () => {
             setIsDragging(false);
         };
+
         window.addEventListener('pointermove', handlePointerMove);
         window.addEventListener('pointerup', handlePointerUp);
+
         return () => {
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerup', handlePointerUp);

@@ -42,9 +42,9 @@ export default class BrainCorePlugin extends Plugin {
         // ============================================================
         this.addCommand({
             id: 'insert-sticky-notes-board',
-            name: 'Insert sticky notes', // Sentence case
+            name: 'Insert sticky notes',
             editorCallback: (editor) => {
-                editor.replaceSelection(`\`\`\`${CODE_BLOCK_TAG}\nNew board\n\`\`\``); // Sentence case
+                editor.replaceSelection(`\`\`\`${CODE_BLOCK_TAG}\nNew board\n\`\`\``);
             }
         });
 
@@ -69,6 +69,7 @@ export default class BrainCorePlugin extends Plugin {
 
         // 1. Check on active leaf change
         this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
+            // Leaf can be null in some edge cases
             if (leaf) void debouncedCheck(leaf);
         }));
 
@@ -83,7 +84,8 @@ export default class BrainCorePlugin extends Plugin {
         // 3. Check on metadata change (Frontmatter updates)
         this.registerEvent(this.app.metadataCache.on('changed', (file) => {
             const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-            if (activeView && activeView.file === file) {
+            // Ensure strictly checking against TFile
+            if (activeView && activeView.file instanceof TFile && activeView.file.path === file.path) {
                 void debouncedCheck(activeView.leaf);
             }
         }));
@@ -105,30 +107,35 @@ export default class BrainCorePlugin extends Plugin {
     onunload() {
         this.app.workspace.iterateAllLeaves((leaf) => {
             if (leaf.view instanceof MarkdownView && leaf.view.containerEl) {
+                // Safe cleanup using Obsidian API
                 leaf.view.containerEl.removeClass('brain-core-full-width');
             }
         });
     }
 
     // ============================================================
-    // ⭐ Full-Width Logic (Refactored)
+    // ⭐ Full-Width Logic (Refactored for Review)
     // ============================================================
 
-    async checkPageWidth(leaf: WorkspaceLeaf | null) {
+    // Added explicit return type Promise<void> for strictness
+    async checkPageWidth(leaf: WorkspaceLeaf | null): Promise<void> {
         // 1. Basic validation
         if (!leaf || !(leaf.view instanceof MarkdownView)) return;
 
         const view = leaf.view;
         const file = view.file;
+
+        // Strict TFile check
         if (!file || !(file instanceof TFile)) return;
 
         // 2. Performance: Pre-check via MetadataCache
         const cache = this.app.metadataCache.getFileCache(file);
 
-        // If there are no 'code' sections, no need to read the file
+        // Safe optional chaining for sections
         const hasCodeSection = cache?.sections?.some(sec => sec.type === 'code');
         let hasStickyNote = false;
 
+        // IO Operation only if necessary
         if (hasCodeSection) {
             try {
                 const content = await this.app.vault.cachedRead(file);
@@ -151,13 +158,13 @@ export default class BrainCorePlugin extends Plugin {
 
         if (shouldBeFullWidth) {
             // ---> Apply Full Width
-            if (!view.containerEl.classList.contains('brain-core-full-width')) {
+            // 🟢 Fix: Use .hasClass() instead of classList.contains (Obsidian API Standard)
+            if (!view.containerEl.hasClass('brain-core-full-width')) {
                 view.containerEl.addClass('brain-core-full-width');
             }
 
             if (!btn) btn = this.createToggleBtn(view);
 
-            // 🟢 Fix: Use .toggle() instead of style.display assignment
             if (btn) {
                 btn.toggle(true); // Show button
                 this.updateIconState(btn, true);
@@ -165,6 +172,7 @@ export default class BrainCorePlugin extends Plugin {
 
         } else {
             // ---> Revert to Standard Width
+            // 🟢 Fix: Use .removeClass() (Obsidian API Standard)
             view.containerEl.removeClass('brain-core-full-width');
 
             if (hasStickyNote && userForceStandard) {
@@ -188,13 +196,14 @@ export default class BrainCorePlugin extends Plugin {
             return this.widthToggleBtns.get(view);
         }
 
-        const btn = view.addAction('minimize', 'Switch to full width', () => { // Sentence case
+        // addAction returns HTMLElement
+        const btn = view.addAction('minimize', 'Switch to full width', () => {
             void this.toggleWidth(view);
         });
 
         if (btn) {
             this.widthToggleBtns.set(view, btn);
-            btn.toggle(false); // Default hidden using .toggle()
+            btn.toggle(false); // Default hidden
         }
         return btn;
     }
@@ -203,7 +212,8 @@ export default class BrainCorePlugin extends Plugin {
         const file = view.file;
         if (!file || !(file instanceof TFile)) return;
 
-        const isCurrentlyFull = view.containerEl.classList.contains('brain-core-full-width');
+        // 🟢 Fix: Use .hasClass()
+        const isCurrentlyFull = view.containerEl.hasClass('brain-core-full-width');
 
         try {
             await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
@@ -215,6 +225,8 @@ export default class BrainCorePlugin extends Plugin {
                     delete frontmatter['bc-width'];
                 }
             });
+            // Re-check strictly after frontmatter update might be safer,
+            // but the metadata-changed event listener will likely handle the UI update.
         } catch (error) {
             console.error('BrainCore: Failed to toggle width via frontmatter:', error);
             new Notice('BrainCore: Unable to update file properties.');
@@ -223,7 +235,6 @@ export default class BrainCorePlugin extends Plugin {
 
     updateIconState(btn: HTMLElement, isFull: boolean) {
         setIcon(btn, isFull ? 'minimize' : 'maximize');
-        // Sentence case for tooltips
         btn.setAttribute('aria-label', isFull ? 'Restore standard width' : 'Switch to full width');
     }
 
