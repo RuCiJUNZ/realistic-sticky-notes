@@ -1,5 +1,3 @@
-// src/core/Dashboard.tsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import { App, MarkdownPostProcessorContext, Notice, TFile } from 'obsidian';
 import { BrainCoreSettings } from '../../settings';
@@ -115,7 +113,6 @@ const WhiteboardContainer: React.FC<{
                     try {
                         const success = await managerRef.current?.deleteBoard(nameToDelete);
                         if (success) {
-                            // 🟢 Fix: Sentence case & formatting
                             new Notice(`🗑️ Deleted "${nameToDelete}"`);
 
                             // Switch to the first board in the list
@@ -169,7 +166,6 @@ const WhiteboardContainer: React.FC<{
                         const success = await managerRef.current?.createBoard(newName);
 
                         if (success) {
-                            // 🟢 Fix: Sentence case & formatting
                             new Notice(`✅ Created "${newName}"`);
                             setCurrentName(newName);
                             await updateMarkdownCodeBlock(newName);
@@ -241,6 +237,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 height: `${containerHeight}px`,
                 position: 'relative',
                 transition: isDragging ? 'none' : 'height 0.2s ease',
+                // Use CSS variables for theming compatibility
                 border: '1px solid var(--background-modifier-border)',
                 borderRadius: '8px',
                 overflow: 'hidden',

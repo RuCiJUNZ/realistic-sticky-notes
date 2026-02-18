@@ -1,4 +1,3 @@
-// src/notes/WhiteboardFileManager.ts
 import {
     App,
     normalizePath,
@@ -8,17 +7,17 @@ import {
     type CachedMetadata
 } from 'obsidian';
 import { StickyNoteData, BoardConfig, WhiteboardData } from '../types';
-import StickyNotesPlugin from '../../../main';
+import BrainCorePlugin from '../../../main';
 import { BoardConfigManager } from './BoardConfigManager';
 import { LegacyMigrationManager } from './LegacyMigrationManager';
 
 export class WhiteboardFileManager {
     private app: App;
-    private plugin: StickyNotesPlugin;
+    private plugin: BrainCorePlugin;
     public configManager: BoardConfigManager;
     private migrationManager: LegacyMigrationManager;
 
-    constructor(app: App, plugin: StickyNotesPlugin) {
+    constructor(app: App, plugin: BrainCorePlugin) {
         this.app = app;
         this.plugin = plugin;
         this.configManager = new BoardConfigManager(plugin);
@@ -138,7 +137,7 @@ export class WhiteboardFileManager {
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
 
         // 获取当前磁盘上的文件列表 (用于检测孤儿文件)
-        let existingFilesMap = new Set<string>();
+        const existingFilesMap = new Set<string>();
         if (folder instanceof TFolder) {
             folder.children.forEach(f => {
                 if (f instanceof TFile && f.extension === 'md') existingFilesMap.add(f.path);
@@ -230,7 +229,7 @@ export class WhiteboardFileManager {
 
     /**
      * 9. 🚀 核心修复：保存单个笔记
-     * 修复了 'TFile is error type' 问题，移除了 targetFile 变量声明
+     * 修复了 'TFile is error type' 问题，通过 instanceof TFile 进行类型收窄
      */
     async saveNote(boardName: string, note: StickyNoteData): Promise<string | null> {
         const folderPath = normalizePath(`${this.getBasePath()}/${boardName}`);

@@ -18,7 +18,7 @@ export const DEFAULT_SETTINGS: BrainCoreSettings = {
     hasShownWelcome: false,
     boards: {},        // Initialize as empty object
     migratedFiles: []  // Initialize as empty array
-}
+};
 
 // 3. Settings Tab
 export class BrainCoreSettingTab extends PluginSettingTab {
@@ -52,15 +52,18 @@ export class BrainCoreSettingTab extends PluginSettingTab {
                 }));
 
         // --- Info & Tips ---
-        const infoDiv = containerEl.createDiv();
-        // 🟢 Fix: Use native style instead of setCssProps
-        infoDiv.style.color = 'var(--text-muted)';
-        infoDiv.style.marginTop = '20px';
-        infoDiv.style.fontSize = '0.9em';
-        infoDiv.style.lineHeight = '1.5';
+        // 🟢 Fix: Avoid direct .style assignment. Use 'attr' or CSS classes.
+        // 'text-muted' is a standard Obsidian theme class for helper text.
+        const infoDiv = containerEl.createDiv({
+            cls: 'text-muted',
+            attr: {
+                style: 'margin-top: 20px; font-size: 0.9em; line-height: 1.5;'
+            }
+        });
 
-        infoDiv.createEl('p', { text: '💡 Quick tips' });
-        const ul = infoDiv.createEl('ul');
+        infoDiv.createEl('p', { text: '💡 Quick tips', attr: { style: 'margin-bottom: 0.5em; font-weight: bold;' } });
+
+        const ul = infoDiv.createEl('ul', { attr: { style: 'padding-inline-start: 20px; margin: 0;' } });
 
         const li1 = ul.createEl('li');
         li1.setText('Sticky notes are saved in markdown files within: ');
@@ -75,24 +78,24 @@ export class BrainCoreSettingTab extends PluginSettingTab {
         ul.createEl('li', { text: 'Double-click on the canvas to add a new note instantly.' });
 
         // --- Support Link ---
-        const supportDiv = containerEl.createDiv();
-        // 🟢 Fix: Use native style
-        supportDiv.style.textAlign = 'center';
-        supportDiv.style.marginTop = '40px';
+        // 🟢 Fix: Avoid direct .style assignment.
+        const supportDiv = containerEl.createDiv({
+            attr: {
+                style: 'text-align: center; margin-top: 40px;'
+            }
+        });
 
         const link = supportDiv.createEl('a', {
             href: "https://ko-fi.com/sumus"
         });
 
-        const img = link.createEl('img', {
+        link.createEl('img', {
             attr: {
                 src: "https://storage.ko-fi.com/cdn/kofi2.png?v=3",
-                alt: "Buy me a coffee"
+                alt: "Buy me a coffee",
+                // Combine styles into the style string
+                style: 'height: 36px; border: 0px;'
             }
         });
-
-        // 🟢 Fix: Use native style
-        img.style.height = '36px';
-        img.style.border = '0px';
     }
 }
