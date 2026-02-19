@@ -95,8 +95,8 @@ export class WhiteboardWidget extends BaseWidget {
 
         } catch (error) {
             console.error("Failed to render whiteboard widget:", error);
-            // Sentence case
-            new Notice("Failed to load sticky notes.");
+            // 🟢 Fix: 移除句号
+            new Notice("Failed to load sticky notes");
         }
     }
 
@@ -152,8 +152,8 @@ export class WhiteboardWidget extends BaseWidget {
                                 await this.updateCodeBlock(newName);
                             } catch (error) {
                                 console.error("Failed to switch board:", error);
-                                // Sentence case
-                                new Notice("Failed to switch board.");
+                                // 🟢 Fix: 移除句号
+                                new Notice("Failed to switch board");
                             }
                         })();
                     }}
@@ -164,21 +164,21 @@ export class WhiteboardWidget extends BaseWidget {
                             try {
                                 const success = await this.manager?.createBoard(newName);
                                 if (success) {
-                                    // Sentence case
-                                    new Notice(`✅ Created "${newName}"`);
+                                    // 🟢 Fix: 移除 Emoji，句首大写
+                                    new Notice(`Created "${newName}"`);
                                     this.currentBoardName = newName;
 
                                     const latestBoards = await this.manager?.listBoards() || [];
                                     await this.refreshReact(latestBoards);
                                     await this.updateCodeBlock(newName);
                                 } else {
-                                    // Sentence case
-                                    new Notice(`⚠️ Board "${newName}" already exists.`);
+                                    // 🟢 Fix: 移除 Emoji 和句号
+                                    new Notice(`Board "${newName}" already exists`);
                                 }
                             } catch (error) {
                                 console.error("Failed to create board:", error);
-                                // Sentence case
-                                new Notice("❌ Failed to create board. Check console.");
+                                // 🟢 Fix: 移除 Emoji 和句号
+                                new Notice("Failed to create board, check console");
                             }
                         })();
                     }}
@@ -190,8 +190,8 @@ export class WhiteboardWidget extends BaseWidget {
                                 const success = await this.manager?.deleteBoard(name);
 
                                 if (success) {
-                                    // Sentence case
-                                    new Notice(`🗑️ Deleted "${name}"`);
+                                    // 🟢 Fix: 移除 Emoji
+                                    new Notice(`Deleted "${name}"`);
 
                                     const latestBoards = await this.manager?.listBoards() || [];
 
@@ -209,8 +209,8 @@ export class WhiteboardWidget extends BaseWidget {
                                 }
                             } catch (error) {
                                 console.error("Failed to delete board:", error);
-                                // Sentence case
-                                new Notice("❌ Failed to delete board.");
+                                // 🟢 Fix: 移除 Emoji 和句号
+                                new Notice("Failed to delete board");
                             }
                         })();
                     }}

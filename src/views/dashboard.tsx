@@ -88,7 +88,7 @@ const WhiteboardContainer: React.FC<{
             });
         } catch (error) {
             console.error("Load Failed:", error);
-            // 🟢 Fix: Sentence case
+            // 🟢 Fix: Sentence case, no punctuation
             new Notice("Load failed");
         }
     };
@@ -101,8 +101,8 @@ const WhiteboardContainer: React.FC<{
     const handleDeleteBoard = (nameToDelete: string) => {
         // Prevent deleting the last remaining board
         if (fileList.length <= 1) {
-            // 🟢 Fix: Sentence case
-            new Notice("Cannot delete: at least one whiteboard is required.");
+            // 🟢 Fix: Sentence case, no period
+            new Notice("Cannot delete, at least one whiteboard is required");
             return;
         }
 
@@ -118,7 +118,8 @@ const WhiteboardContainer: React.FC<{
                     try {
                         const success = await managerRef.current?.deleteBoard(nameToDelete);
                         if (success) {
-                            new Notice(`🗑️ Deleted "${nameToDelete}"`);
+                            // 🟢 Fix: Removed emoji
+                            new Notice(`Deleted "${nameToDelete}"`);
 
                             // Switch to the first board in the list
                             const newList = await managerRef.current?.listBoards();
@@ -127,13 +128,13 @@ const WhiteboardContainer: React.FC<{
                             setCurrentName(nextBoard);
                             await updateMarkdownCodeBlock(nextBoard);
                         } else {
-                            // 🟢 Fix: Sentence case
-                            new Notice("❌ Delete failed");
+                            // 🟢 Fix: Removed emoji
+                            new Notice("Delete failed");
                         }
                     } catch (error) {
                         console.error("Delete operation failed", error);
-                        // 🟢 Fix: Sentence case
-                        new Notice("❌ An error occurred. Please check the console.");
+                        // 🟢 Fix: Removed emoji, combined into one sentence without periods
+                        new Notice("An error occurred, please check the console");
                     }
                 })();
             }
@@ -169,17 +170,18 @@ const WhiteboardContainer: React.FC<{
                         const success = await managerRef.current?.createBoard(newName);
 
                         if (success) {
-                            new Notice(`✅ Created "${newName}"`);
+                            // 🟢 Fix: Removed emoji
+                            new Notice(`Created "${newName}"`);
                             setCurrentName(newName);
                             await updateMarkdownCodeBlock(newName);
                         } else {
-                            // 🟢 Fix: Sentence case
-                            new Notice(`⚠️ Failed to create "${newName}". It might already exist.`);
+                            // 🟢 Fix: Removed emoji, merged sentences, no ending period
+                            new Notice(`Failed to create "${newName}", it might already exist`);
                         }
                     } catch (error) {
                         console.error("Error creating board:", error);
-                        // 🟢 Fix: Sentence case
-                        new Notice("❌ Error: could not create board. Check console for details.");
+                        // 🟢 Fix: Removed emoji, merged sentences, no ending period
+                        new Notice("Could not create board, check console for details");
                     }
                 })();
             }}

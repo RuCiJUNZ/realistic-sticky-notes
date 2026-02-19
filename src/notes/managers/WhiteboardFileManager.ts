@@ -4,11 +4,11 @@ import {
     Notice,
     TFile,
     TFolder,
-    CachedMetadata // 🟢 直接合并到这里
+    CachedMetadata
 } from 'obsidian';
 
 import { StickyNoteData, BoardConfig, WhiteboardData } from '../types';
-// 🟢 Fix: 使用 import type 避免循环引用（如果 main.ts 也引用了这个文件）
+// 🟢 Fix: 使用 import type 避免循环引用
 import type BrainCorePlugin from '../../../main';
 import { BoardConfigManager } from './BoardConfigManager';
 import { LegacyMigrationManager } from './LegacyMigrationManager';
@@ -66,7 +66,7 @@ export class WhiteboardFileManager {
 
         const existingFolder = this.app.vault.getAbstractFileByPath(folderPath);
         if (existingFolder) {
-            new Notice(`Board "${safeName}" already exists.`);
+            new Notice(`Board "${safeName}" already exists`);
             return false;
         }
 
@@ -76,7 +76,7 @@ export class WhiteboardFileManager {
             return true;
         } catch (error) {
             console.error("Failed to create board:", error);
-            new Notice("Failed to create board.");
+            new Notice("Failed to create board");
             return false;
         }
     }
@@ -93,7 +93,7 @@ export class WhiteboardFileManager {
             return true;
         } catch (error) {
             console.error(`Failed to delete board: ${boardName}`, error);
-            new Notice("Failed to delete board.");
+            new Notice("Failed to delete board");
             return false;
         }
     }
@@ -126,7 +126,7 @@ export class WhiteboardFileManager {
         await this.migrationManager.checkAndMigrate(this.getBasePath(), this);
     }
 
-    // 7. 保存白板 (核心逻辑：保存配置 + 批量保存笔记 + 清理孤儿文件)
+    // 7. 保存白板
     async saveBoard(boardName: string, data: WhiteboardData) {
         const folderPath = normalizePath(`${this.getBasePath()}/${boardName}`);
 
@@ -137,9 +137,8 @@ export class WhiteboardFileManager {
         });
 
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
-
-        // 获取当前磁盘上的文件列表 (用于检测孤儿文件)
         const existingFilesMap = new Set<string>();
+
         if (folder instanceof TFolder) {
             folder.children.forEach(f => {
                 if (f instanceof TFile && f.extension === 'md') existingFilesMap.add(f.path);
@@ -148,7 +147,7 @@ export class WhiteboardFileManager {
 
         const activeFilePaths = new Set<string>();
 
-        // 7.2 并行保存所有笔记 (分批次处理以防止 I/O 拥堵)
+        // 7.2 并行保存所有笔记
         const notes = data.notes;
         const CHUNK_SIZE = 50;
 
@@ -165,7 +164,7 @@ export class WhiteboardFileManager {
             await Promise.all(chunkPromises);
         }
 
-        // 7.3 清理孤儿文件 (内存中已删除，但本地文件还在的)
+        // 7.3 清理孤儿文件
         const deletePromises: Promise<void>[] = [];
 
         for (const existingPath of existingFilesMap) {
@@ -173,7 +172,6 @@ export class WhiteboardFileManager {
                 const file = this.app.vault.getAbstractFileByPath(existingPath);
 
                 if (file instanceof TFile) {
-                    // 安全检查：只删除确实是 sticky-note 类型的文件
                     const cache = this.app.metadataCache.getFileCache(file);
 
                     if (cache?.frontmatter?.type === 'sticky-note') {
@@ -198,14 +196,11 @@ export class WhiteboardFileManager {
 
     // 8. 解析单个笔记文件
     private async parseNoteFile(file: TFile): Promise<StickyNoteData | null> {
-        // 优先读取缓存的元数据
         const cache = this.app.metadataCache.getFileCache(file);
         const frontmatter = cache?.frontmatter;
 
         if (frontmatter && frontmatter.type === 'sticky-note') {
-            // 读取文件内容 (I/O 操作)
             const content = await this.app.vault.read(file);
-            // 移除 Frontmatter 块
             const bodyContent = content.replace(/^---\n[\s\S]*?\n---\n?/, '').trim();
 
             return {
@@ -229,37 +224,27 @@ export class WhiteboardFileManager {
         return null;
     }
 
-    /**
-     * 9. 🚀 核心修复：保存单个笔记
-     * 修复了 'TFile is error type' 问题，通过 instanceof TFile 进行类型收窄
-     */
+    // 9. 保存单个笔记
     async saveNote(boardName: string, note: StickyNoteData): Promise<string | null> {
         const folderPath = normalizePath(`${this.getBasePath()}/${boardName}`);
 
-        // 确保文件夹存在
         if (!this.app.vault.getAbstractFileByPath(folderPath)) {
             await this.app.vault.createFolder(folderPath);
         }
 
         const newFileContent = this.constructFileContent(note);
-
-        // 确定目标文件路径
         let targetPath = note.filepath;
 
-        // 如果没有路径，或者路径对应的文件不存在（可能是改名导致的），则生成标准新路径
         if (!targetPath || !this.app.vault.getAbstractFileByPath(targetPath)) {
             targetPath = normalizePath(`${folderPath}/Note ${note.id}.md`);
         }
 
-        // 获取路径对应的抽象文件对象
         const abstractFile = this.app.vault.getAbstractFileByPath(targetPath);
 
         try {
-            // 情况 A: 文件已存在 (Update) -> 使用 instanceof 收窄类型
             if (abstractFile instanceof TFile) {
                 const cache = this.app.metadataCache.getFileCache(abstractFile);
 
-                // 仅当元数据变更或内容不一致时才写入 (性能优化)
                 if (this.hasMetadataChanged(cache, note)) {
                     await this.app.vault.modify(abstractFile, newFileContent);
                 } else {
@@ -271,10 +256,7 @@ export class WhiteboardFileManager {
 
                 note.filepath = abstractFile.path;
                 return abstractFile.path;
-            }
-            // 情况 B: 文件不存在 (Create)
-            else {
-                // 如果路径被占用但不是文件 (例如同名文件夹)，防止报错
+            } else {
                 if (abstractFile) {
                     console.error(`Cannot create note at ${targetPath}: path is occupied.`);
                     return null;
@@ -295,29 +277,34 @@ export class WhiteboardFileManager {
     private hasMetadataChanged(cache: CachedMetadata | null, note: StickyNoteData): boolean {
         if (!cache || !cache.frontmatter) return true;
 
-        // 显式声明 fm 的类型，防止 eslint 报 unsafe-member-access
         const fm = cache.frontmatter as Record<string, unknown>;
 
-        // 1. 安全处理 ID：防范 undefined，并转为小写避免意外的格式不匹配
-        const fmId = fm.id !== undefined && fm.id !== null ? String(fm.id) : '';
-        const noteId = note.id !== undefined && note.id !== null ? String(note.id) : '';
+        // 🟢 Fix: 建立安全的类型检查提取器，防止 'unknown' 触发 ESLint 报错
+        const safeString = (val: unknown): string =>
+            (typeof val === 'string' || typeof val === 'number') ? String(val) : '';
+        const safeNumber = (val: unknown): number =>
+            typeof val === 'number' ? val : 0;
+
+        // 1. 安全处理 ID
+        const fmId = safeString(fm.id);
+        const noteId = safeString(note.id);
         if (fmId !== noteId) return true;
 
-        // 2. 安全比较数值：使用 ?? 0 提供默认值，防止向 Math.round 传递 undefined
-        const fmx = typeof fm.x === 'number' ? fm.x : 0;
-        const fmy = typeof fm.y === 'number' ? fm.y : 0;
+        // 2. 安全处理数值
+        const fmx = safeNumber(fm.x);
+        const fmy = safeNumber(fm.y);
         if (fmx !== Math.round(note.x ?? 0)) return true;
         if (fmy !== Math.round(note.y ?? 0)) return true;
+        if (safeNumber(fm.rotation) !== (note.rotation ?? 0)) return true;
 
-        // 3. 安全比较其他属性：使用 ?? 提供默认回退值
-        if ((fm.rotation ?? 0) !== (note.rotation ?? 0)) return true;
-        if ((fm.color ?? '') !== (note.color ?? '')) return true;
-        if ((fm.size ?? '') !== (note.size ?? '')) return true;
-        if ((fm.shape ?? '') !== (note.shape ?? '')) return true;
-        if ((fm.style ?? '') !== (note.style ?? '')) return true;
-        if ((fm.bgStyle ?? '') !== (note.bgStyle ?? '')) return true;
-        if ((fm.pinType ?? '') !== (note.pinType ?? '')) return true;
-        if ((fm.pinPos ?? '') !== (note.pinPos ?? '')) return true;
+        // 3. 安全处理其他字符串属性
+        if (safeString(fm.color) !== (note.color ?? '')) return true;
+        if (safeString(fm.size) !== (note.size ?? '')) return true;
+        if (safeString(fm.shape) !== (note.shape ?? '')) return true;
+        if (safeString(fm.style) !== (note.style ?? '')) return true;
+        if (safeString(fm.bgStyle) !== (note.bgStyle ?? '')) return true;
+        if (safeString(fm.pinType) !== (note.pinType ?? '')) return true;
+        if (safeString(fm.pinPos) !== (note.pinPos ?? '')) return true;
 
         return false;
     }

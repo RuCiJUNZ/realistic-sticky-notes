@@ -6,8 +6,8 @@ import {
     Notice,
     WorkspaceLeaf,
     TFile,
-    MarkdownPostProcessorContext,
-    Platform
+    MarkdownPostProcessorContext
+    // 🟢 修复 1: 移除了未使用的 'Platform'
 } from 'obsidian';
 import { BrainCoreSettings, DEFAULT_SETTINGS, BrainCoreSettingTab } from './settings';
 import { ReactHost } from './src/views/react-host';
@@ -54,12 +54,15 @@ export default class BrainCorePlugin extends Plugin {
             callback: () => { void this.activateWelcomeView(); }
         });
 
-        this.app.workspace.onLayoutReady(async () => {
-            if (!this.settings.hasShownWelcome) {
-                await this.activateWelcomeView();
-                this.settings.hasShownWelcome = true;
-                await this.saveSettings();
-            }
+        // 🟢 修复 2: 显式处理 onLayoutReady 中的 Promise，避免悬挂的异步调用
+        this.app.workspace.onLayoutReady(() => {
+            void (async () => {
+                if (!this.settings.hasShownWelcome) {
+                    await this.activateWelcomeView();
+                    this.settings.hasShownWelcome = true;
+                    await this.saveSettings();
+                }
+            })();
         });
 
         // ============================================================
@@ -69,7 +72,6 @@ export default class BrainCorePlugin extends Plugin {
 
         // 1. Check on active leaf change
         this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
-            // Leaf can be null in some edge cases
             if (leaf) void debouncedCheck(leaf);
         }));
 
@@ -117,7 +119,6 @@ export default class BrainCorePlugin extends Plugin {
     // ⭐ Full-Width Logic (Refactored for Review)
     // ============================================================
 
-    // Added explicit return type Promise<void> for strictness
     async checkPageWidth(leaf: WorkspaceLeaf | null): Promise<void> {
         // 1. Basic validation
         if (!leaf || !(leaf.view instanceof MarkdownView)) return;
@@ -158,7 +159,6 @@ export default class BrainCorePlugin extends Plugin {
 
         if (shouldBeFullWidth) {
             // ---> Apply Full Width
-            // 🟢 Fix: Use .hasClass() instead of classList.contains (Obsidian API Standard)
             if (!view.containerEl.hasClass('brain-core-full-width')) {
                 view.containerEl.addClass('brain-core-full-width');
             }
@@ -172,7 +172,6 @@ export default class BrainCorePlugin extends Plugin {
 
         } else {
             // ---> Revert to Standard Width
-            // 🟢 Fix: Use .removeClass() (Obsidian API Standard)
             view.containerEl.removeClass('brain-core-full-width');
 
             if (hasStickyNote && userForceStandard) {
@@ -212,7 +211,6 @@ export default class BrainCorePlugin extends Plugin {
         const file = view.file;
         if (!file || !(file instanceof TFile)) return;
 
-        // 🟢 Fix: Use .hasClass()
         const isCurrentlyFull = view.containerEl.hasClass('brain-core-full-width');
 
         try {
@@ -225,11 +223,10 @@ export default class BrainCorePlugin extends Plugin {
                     delete frontmatter['bc-width'];
                 }
             });
-            // Re-check strictly after frontmatter update might be safer,
-            // but the metadata-changed event listener will likely handle the UI update.
         } catch (error) {
             console.error('BrainCore: Failed to toggle width via frontmatter:', error);
-            new Notice('BrainCore: Unable to update file properties.');
+            // 🟢 修复 3: 使用 Sentence case，且按照 Obsidian 官方建议去除插件前缀和句号
+            new Notice('Unable to update file properties');
         }
     }
 

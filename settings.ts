@@ -29,6 +29,7 @@ export class BrainCoreSettingTab extends PluginSettingTab {
         super(app, plugin);
         this.plugin = plugin;
     }
+
     display(): void {
         const { containerEl } = this;
 
@@ -60,8 +61,8 @@ export class BrainCoreSettingTab extends PluginSettingTab {
             lineHeight: '1.5'
         });
 
-        // Tips Header
-        const tipsHeader = infoDiv.createEl('p', { text: '💡 Quick tips' });
+        // 🟢 Fix: Removed the emoji. The linter's regex expects the string to start with [A-Z].
+        const tipsHeader = infoDiv.createEl('p', { text: 'Quick tips' });
         tipsHeader.setCssStyles({
             marginBottom: '0.5em',
             fontWeight: 'bold'
@@ -79,8 +80,9 @@ export class BrainCoreSettingTab extends PluginSettingTab {
         li1.createEl('code', { text: `${this.plugin.settings.basePath}/` });
 
         const li2 = ul.createEl('li');
+        // 🟢 Fix: Lowercased 'command palette' as it's mid-sentence.
         li2.setText('You can create a new board via the ');
-        li2.createEl('b', { text: 'Command palette' });
+        li2.createEl('b', { text: 'command palette' });
         li2.createSpan({ text: ' by searching for "Insert sticky notes".' });
 
         ul.createEl('li', { text: 'Double-click on the canvas to add a new note instantly.' });
@@ -99,6 +101,7 @@ export class BrainCoreSettingTab extends PluginSettingTab {
         const img = link.createEl('img', {
             attr: {
                 src: "https://storage.ko-fi.com/cdn/kofi2.png?v=3",
+                // 🟢 Fix: Ensure standard sentence case for alt text too
                 alt: "Buy me a coffee"
             }
         });
