@@ -3,10 +3,9 @@ import {
     normalizePath,
     Notice,
     TFile,
-    TFolder
+    TFolder,
+    CachedMetadata // 🟢 直接合并到这里
 } from 'obsidian';
-// 🟢 Fix: 单独导入类型，解决 "error type" 问题
-import type { CachedMetadata } from 'obsidian';
 
 import { StickyNoteData, BoardConfig, WhiteboardData } from '../types';
 // 🟢 Fix: 使用 import type 避免循环引用（如果 main.ts 也引用了这个文件）
@@ -292,24 +291,33 @@ export class WhiteboardFileManager {
         return null;
     }
 
-    // 10. 辅助：检查脏数据
+    // 10. 辅助：检查脏数据 (Linter 友好版本)
     private hasMetadataChanged(cache: CachedMetadata | null, note: StickyNoteData): boolean {
         if (!cache || !cache.frontmatter) return true;
-        const fm = cache.frontmatter;
 
-        // 字符串化对比 ID，防止类型不匹配
-        if (String(fm.id) !== String(note.id)) return true;
+        // 显式声明 fm 的类型，防止 eslint 报 unsafe-member-access
+        const fm = cache.frontmatter as Record<string, unknown>;
 
-        if (fm.x !== Math.round(note.x)) return true;
-        if (fm.y !== Math.round(note.y)) return true;
-        if (fm.rotation !== note.rotation) return true;
-        if (fm.color !== note.color) return true;
-        if (fm.size !== note.size) return true;
-        if (fm.shape !== note.shape) return true;
-        if (fm.style !== note.style) return true;
-        if (fm.bgStyle !== note.bgStyle) return true;
-        if (fm.pinType !== note.pinType) return true;
-        if (fm.pinPos !== note.pinPos) return true;
+        // 1. 安全处理 ID：防范 undefined，并转为小写避免意外的格式不匹配
+        const fmId = fm.id !== undefined && fm.id !== null ? String(fm.id) : '';
+        const noteId = note.id !== undefined && note.id !== null ? String(note.id) : '';
+        if (fmId !== noteId) return true;
+
+        // 2. 安全比较数值：使用 ?? 0 提供默认值，防止向 Math.round 传递 undefined
+        const fmx = typeof fm.x === 'number' ? fm.x : 0;
+        const fmy = typeof fm.y === 'number' ? fm.y : 0;
+        if (fmx !== Math.round(note.x ?? 0)) return true;
+        if (fmy !== Math.round(note.y ?? 0)) return true;
+
+        // 3. 安全比较其他属性：使用 ?? 提供默认回退值
+        if ((fm.rotation ?? 0) !== (note.rotation ?? 0)) return true;
+        if ((fm.color ?? '') !== (note.color ?? '')) return true;
+        if ((fm.size ?? '') !== (note.size ?? '')) return true;
+        if ((fm.shape ?? '') !== (note.shape ?? '')) return true;
+        if ((fm.style ?? '') !== (note.style ?? '')) return true;
+        if ((fm.bgStyle ?? '') !== (note.bgStyle ?? '')) return true;
+        if ((fm.pinType ?? '') !== (note.pinType ?? '')) return true;
+        if ((fm.pinPos ?? '') !== (note.pinPos ?? '')) return true;
 
         return false;
     }

@@ -29,15 +29,15 @@ export class BrainCoreSettingTab extends PluginSettingTab {
         super(app, plugin);
         this.plugin = plugin;
     }
-
     display(): void {
         const { containerEl } = this;
 
         containerEl.empty();
 
-        // 🔴 Fix: Setting 类没有 setHeading() 方法
-        // 使用标准的 HTML 标题
-        containerEl.createEl('h2', { text: 'Sticky notes' });
+        // 🟢 修复 1: 使用官方 Setting API 来生成标准化的标题
+        new Setting(containerEl)
+            .setName('Sticky notes')
+            .setHeading();
 
         // --- General Settings ---
         new Setting(containerEl)
@@ -52,22 +52,27 @@ export class BrainCoreSettingTab extends PluginSettingTab {
                 }));
 
         // --- Info & Tips ---
-        // 🟢 Fix: 避免使用 attr: { style: ... }。
-        // 使用 .createDiv 后直接操作 style 属性，更加类型安全且符合 CSP。
         const infoDiv = containerEl.createDiv({ cls: 'text-muted' });
-        infoDiv.style.marginTop = '20px';
-        infoDiv.style.fontSize = '0.9em';
-        infoDiv.style.lineHeight = '1.5';
+        // 🟢 修复 2: 统一使用 setCssStyles 代替直接操作 .style
+        infoDiv.setCssStyles({
+            marginTop: '20px',
+            fontSize: '0.9em',
+            lineHeight: '1.5'
+        });
 
         // Tips Header
         const tipsHeader = infoDiv.createEl('p', { text: '💡 Quick tips' });
-        tipsHeader.style.marginBottom = '0.5em';
-        tipsHeader.style.fontWeight = 'bold';
+        tipsHeader.setCssStyles({
+            marginBottom: '0.5em',
+            fontWeight: 'bold'
+        });
 
         // Tips List
         const ul = infoDiv.createEl('ul');
-        ul.style.paddingInlineStart = '20px';
-        ul.style.margin = '0';
+        ul.setCssStyles({
+            paddingInlineStart: '20px',
+            margin: '0'
+        });
 
         const li1 = ul.createEl('li');
         li1.setText('Sticky notes are saved in markdown files within: ');
@@ -75,7 +80,6 @@ export class BrainCoreSettingTab extends PluginSettingTab {
 
         const li2 = ul.createEl('li');
         li2.setText('You can create a new board via the ');
-        // Obsidian UI standard: "Command palette" (Sentence case)
         li2.createEl('b', { text: 'Command palette' });
         li2.createSpan({ text: ' by searching for "Insert sticky notes".' });
 
@@ -83,8 +87,10 @@ export class BrainCoreSettingTab extends PluginSettingTab {
 
         // --- Support Link ---
         const supportDiv = containerEl.createDiv();
-        supportDiv.style.textAlign = 'center';
-        supportDiv.style.marginTop = '40px';
+        supportDiv.setCssStyles({
+            textAlign: 'center',
+            marginTop: '40px'
+        });
 
         const link = supportDiv.createEl('a', {
             href: "https://ko-fi.com/sumus"
@@ -96,8 +102,11 @@ export class BrainCoreSettingTab extends PluginSettingTab {
                 alt: "Buy me a coffee"
             }
         });
-        // 直接设置图片样式
-        img.style.height = '36px';
-        img.style.border = '0px';
+
+        // 🟢 修复 3: 图片样式也改用 setCssStyles
+        img.setCssStyles({
+            height: '36px',
+            border: '0px'
+        });
     }
 }

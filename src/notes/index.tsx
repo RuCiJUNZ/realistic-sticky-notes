@@ -1,16 +1,19 @@
-import React from 'react';
-import { createRoot, Root } from 'react-dom/client';
-// 🟢 Fix: 合并导入，确保 MarkdownPostProcessorContext 被正确识别
+import { createRoot } from 'react-dom/client';
+import type { Root } from 'react-dom/client'; // 🟢 Root 也是纯类型，建议拆出来
+
+// 🟢 Fix: 严格区分运行时类和纯类型接口
 import {
     App,
     Notice,
     TFile,
-    MarkdownPostProcessorContext
+    type MarkdownPostProcessorContext // 👈 核心修复：前面加上 type 关键字
 } from 'obsidian';
-import { RegisterWidget, BaseWidget, WidgetConfig } from '../../core';
+
+import { RegisterWidget, BaseWidget } from '../../core';
+import type { WidgetConfig } from '../../core'; // 🟢 WidgetConfig 如果是 interface，也建议用 type 导入
+
 import { WhiteboardComponent } from './board/Whiteboard';
 import { WhiteboardFileManager } from './managers/WhiteboardFileManager';
-// 🟢 Fix: 使用 import type 避免循环引用
 import type BrainCorePlugin from '../../main';
 
 // =============================================================================
