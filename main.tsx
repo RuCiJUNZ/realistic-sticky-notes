@@ -92,20 +92,18 @@ export default class BrainCorePlugin extends Plugin {
             }
         }));
     }
-
     async activateWelcomeView() {
         const { workspace } = this.app;
         const leaves = workspace.getLeavesOfType(WELCOME_VIEW_TYPE);
 
         if (leaves.length > 0) {
-            workspace.revealLeaf(leaves[0]);
+            await workspace.revealLeaf(leaves[0]); // 🟢 修复：添加 await
         } else {
             const leaf = workspace.getLeaf('tab');
             await leaf.setViewState({ type: WELCOME_VIEW_TYPE, active: true });
-            workspace.revealLeaf(leaf);
+            await workspace.revealLeaf(leaf);      // 🟢 修复：添加 await
         }
     }
-
     onunload() {
         this.app.workspace.iterateAllLeaves((leaf) => {
             if (leaf.view instanceof MarkdownView && leaf.view.containerEl) {

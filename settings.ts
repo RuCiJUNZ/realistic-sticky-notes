@@ -43,9 +43,9 @@ export class BrainCoreSettingTab extends PluginSettingTab {
         // --- General Settings ---
         new Setting(containerEl)
             .setName('Data storage path')
-            .setDesc('The folder path where BrainCore data and assets will be stored.')
+            .setDesc('The folder path where plugin data and assets will be stored.')
             .addText(text => text
-                .setPlaceholder('BrainCore')
+                .setPlaceholder('braincore')
                 .setValue(this.plugin.settings.basePath)
                 .onChange(async (value) => {
                     this.plugin.settings.basePath = value;
@@ -75,15 +75,15 @@ export class BrainCoreSettingTab extends PluginSettingTab {
             margin: '0'
         });
 
+        // 🟢 修改为：(统统改用 appendText)
         const li1 = ul.createEl('li');
-        li1.setText('Sticky notes are saved in markdown files within: ');
-        li1.createEl('code', { text: `${this.plugin.settings.basePath}/` });
+        li1.appendText('Sticky notes are saved in markdown files within: ');
+        li1.createEl('code').appendText(`${this.plugin.settings.basePath}/`);
 
         const li2 = ul.createEl('li');
-        // 🟢 Fix: Lowercased 'command palette' as it's mid-sentence.
-        li2.setText('You can create a new board via the ');
-        li2.createEl('b', { text: 'command palette' });
-        li2.createSpan({ text: ' by searching for "Insert sticky notes".' });
+        li2.appendText('You can create a new board via the ');
+        li2.createEl('b').appendText('command palette');
+        li2.appendText(' by searching for "Insert sticky notes".');
 
         ul.createEl('li', { text: 'Double-click on the canvas to add a new note instantly.' });
 
