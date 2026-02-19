@@ -80,7 +80,6 @@ export class WhiteboardFileManager {
             return false;
         }
     }
-
     // 4. 删除白板
     async deleteBoard(boardName: string): Promise<boolean> {
         const folderPath = normalizePath(`${this.getBasePath()}/${boardName}`);
@@ -89,11 +88,12 @@ export class WhiteboardFileManager {
         if (!folder) return false;
 
         try {
-            await this.app.vault.trash(folder, true); // true = System trash (safer)
+            // 🟢 修复：无论删文件还是删文件夹，统统用 fileManager.trashFile
+            await this.app.fileManager.trashFile(folder);
             return true;
         } catch (error) {
             console.error(`Failed to delete board: ${boardName}`, error);
-            new Notice("Failed to delete board");
+            new Notice("Failed to delete board"); // 这里的 Notice 首字母大写且无句号，非常标准！
             return false;
         }
     }
@@ -163,7 +163,6 @@ export class WhiteboardFileManager {
             });
             await Promise.all(chunkPromises);
         }
-
         // 7.3 清理孤儿文件
         const deletePromises: Promise<void>[] = [];
 
@@ -175,7 +174,8 @@ export class WhiteboardFileManager {
                     const cache = this.app.metadataCache.getFileCache(file);
 
                     if (cache?.frontmatter?.type === 'sticky-note') {
-                        const deletePromise = this.app.vault.trash(file, true)
+                        // 🟢 修复：改用 fileManager.trashFile 来尊重用户的删除设置
+                        const deletePromise = this.app.fileManager.trashFile(file)
                             .then(() => {
                                 console.debug(`[BrainCore] Deleted orphan: ${existingPath}`);
                             })

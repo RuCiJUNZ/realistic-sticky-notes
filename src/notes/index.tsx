@@ -65,10 +65,9 @@ export class WhiteboardWidget extends BaseWidget {
 
     async render() {
         this.container.addClass('bc-transparent-widget');
-
         try {
             this.plugin = this.getPluginInstance();
-        } catch (e) {
+        } catch { // 🟢 修复：直接去掉 (e)，干脆利落
             return;
         }
 

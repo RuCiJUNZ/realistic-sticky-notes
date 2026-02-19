@@ -43,9 +43,9 @@ export class BrainCoreSettingTab extends PluginSettingTab {
         // --- General Settings ---
         new Setting(containerEl)
             .setName('Data storage path')
-            .setDesc('The folder path where plugin data and assets will be stored.')
+            .setDesc('The folder path where plugin data and assets will be stored') // 🟢 修复：去掉了末尾的句号
             .addText(text => text
-                .setPlaceholder('braincore')
+                .setPlaceholder('Braincore') // 🟢 修复：首字母大写，后面全小写，完美符合 Sentence case
                 .setValue(this.plugin.settings.basePath)
                 .onChange(async (value) => {
                     this.plugin.settings.basePath = value;
